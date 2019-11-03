@@ -49,7 +49,7 @@ namespace Base58Check
             var fiftyEight = new BigInteger(58);
 
             // Encode BigInteger to Base58 string
-            var result = new StringBuilder(data.Length * 4);
+            var result = new StringBuilder((int)(data.Length * (5.0 / 3.0)));
             while (intData > BigInteger.Zero)
             {
                 int remainder = (int)(intData % fiftyEight);
