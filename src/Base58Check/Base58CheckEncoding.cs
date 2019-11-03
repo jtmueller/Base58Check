@@ -62,7 +62,7 @@ namespace Base58Check
         public static byte[] Decode(string data)
         {
             byte[] dataWithCheckSum = DecodePlain(data);
-            byte[] dataWithoutCheckSum = VerifyAndRemoveCheckSum(dataWithCheckSum);
+            byte[]? dataWithoutCheckSum = VerifyAndRemoveCheckSum(dataWithCheckSum);
 
             if (dataWithoutCheckSum == null)
             {
@@ -115,7 +115,7 @@ namespace Base58Check
         }
 
         //Returns null if the checksum is invalid
-        private static byte[] VerifyAndRemoveCheckSum(byte[] data)
+        private static byte[]? VerifyAndRemoveCheckSum(byte[] data)
         {
             byte[] result = ArrayHelpers.SubArray(data, 0, data.Length - CHECK_SUM_SIZE);
             byte[] givenCheckSum = ArrayHelpers.SubArray(data, data.Length - CHECK_SUM_SIZE);
