@@ -22,7 +22,7 @@ namespace Base58Check
         /// </summary>
         /// <param name="data">Data to be encoded</param>
         /// <returns></returns>
-        public static string Encode(ReadOnlySpan<byte> data)
+        public static string EncodeWithChecksum(ReadOnlySpan<byte> data)
         {
             Span<byte> dataWithChecksum = data.Length > 100 
                 ? new byte[data.Length + CHECKSUM_SIZE] 
@@ -88,7 +88,7 @@ namespace Base58Check
         /// </summary>
         /// <param name="data">Data to be decoded</param>
         /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
-        public static ReadOnlySpan<byte> Decode(ReadOnlySpan<char> data)
+        public static ReadOnlySpan<byte> DecodeWithChecksum(ReadOnlySpan<char> data)
         {
             var dataWithCheckSum = DecodePlain(data);
             var dataWithoutCheckSum = VerifyAndRemoveCheckSum(dataWithCheckSum);
@@ -168,8 +168,8 @@ namespace Base58Check
         {
             var result = data[..^CHECKSUM_SIZE];
             var givenCheckSum = data[^CHECKSUM_SIZE..];
-            Span<byte> correctCheckSum = stackalloc byte[CHECKSUM_SIZE];
 
+            Span<byte> correctCheckSum = stackalloc byte[CHECKSUM_SIZE];
             if (GetCheckSum(result, correctCheckSum))
             {
                 return givenCheckSum.SequenceEqual(correctCheckSum) ? result : Span<byte>.Empty;

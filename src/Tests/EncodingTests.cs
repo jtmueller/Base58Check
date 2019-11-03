@@ -67,21 +67,21 @@ namespace Tests
         [Test]
         public void EncodeBitcoinAddress()
         {
-            string actualText = Base58CheckEncoding.Encode(AddressBytes);
+            string actualText = Base58CheckEncoding.EncodeWithChecksum(AddressBytes);
             Assert.AreEqual(ADDRESS_TEXT, actualText);
         }
 
         [Test]
         public void DecodeBitcoinAddress()
         {
-            byte[] actualBytes = Base58CheckEncoding.Decode(ADDRESS_TEXT).ToArray();
+            byte[] actualBytes = Base58CheckEncoding.DecodeWithChecksum(ADDRESS_TEXT).ToArray();
             Assert.AreEqual(AddressBytes, actualBytes);
         }
 
         [Test]
         public void DecodeBrokenBitcoinAddress()
         {
-            Assert.That(() => Base58CheckEncoding.Decode(BROKEN_ADDRESS_TEXT),
+            Assert.That(() => Base58CheckEncoding.DecodeWithChecksum(BROKEN_ADDRESS_TEXT),
                 Throws.InstanceOf<FormatException>());
         }
     }
