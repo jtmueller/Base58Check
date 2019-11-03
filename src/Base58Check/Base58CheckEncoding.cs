@@ -17,10 +17,7 @@ namespace Base58Check
     {
         private const int CHECKSUM_SIZE = 4;
         private const int HASH_BYTES = 32;
-        private const string DIGITS = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-        private static readonly byte[] DIGIT_BYTES = Encoding.UTF8.GetBytes(DIGITS);
-
-        // TODO: Change the API to allow callers to allocate destination? Might need a "MaxByte/MaxChars" method.
+        private static readonly byte[] DIGIT_BYTES = Encoding.UTF8.GetBytes("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz");
 
         /// <summary>
         /// Encodes data with a 4-byte checksum
@@ -46,6 +43,7 @@ namespace Base58Check
         /// Writes UTF-8 bytes to the destination span.
         /// </summary>
         /// <param name="data">Data to be encoded</param>
+        /// <param name="destination">The destination span to write to.</param>
         /// <returns></returns>
         public static int EncodeWithChecksum(ReadOnlySpan<byte> data, Span<byte> destination)
         {
@@ -89,9 +87,33 @@ namespace Base58Check
 
         /// <summary>
         /// Encodes data in plain Base58, without any checksum.
+        /// </summary>
+        /// <param name="data">The data to be encoded</param>
+        /// <param name="destination">The destination span to write to.</param>
+        /// <returns></returns>
+        public static int EncodePlain(ReadOnlySpan<byte> data, Span<char> destination)
+        {
+            if (data.Length == 0)
+                return 0;
+
+            byte[] result = ArrayPool<byte>.Shared.Rent(MaxChars(data.Length));
+            try
+            {
+                int written = EncodePlain(data, result);
+                return Encoding.UTF8.GetChars(result.AsSpan(..written), destination);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(result);
+            }
+        }
+
+        /// <summary>
+        /// Encodes data in plain Base58, without any checksum.
         /// Writes UTF-8 bytes to the destination span.
         /// </summary>
         /// <param name="data">The data to be encoded</param>
+        /// <param name="destination">The destination span to write to.</param>
         /// <returns>Returns the number of bytes written to the destination span.</returns>
         public static int EncodePlain(ReadOnlySpan<byte> data, Span<byte> destination)
         {
@@ -128,14 +150,26 @@ namespace Base58Check
             return pos;
         }
 
+        /// <summary>
+        /// Gets the maximum number of characters that the given number of bytes can be encoded to.
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int MaxChars(int byteCount) => (int)Math.Ceiling(byteCount * (5.0 / 3.0));
 
+        /// <summary>
+        /// Gets the maximum number of characters that the given number of bytes can be encoded to, including checksum characters.
+        /// </summary>
         public static int MaxCharsWithChecksum(int byteCount) => MaxChars(byteCount + CHECKSUM_SIZE);
 
+        /// <summary>
+        /// Gets the maximum number of bytes that the given number of characters can be decoded to.
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int MaxBytes(int charCount) => (int)Math.Ceiling(charCount / (5.0 / 3.0));
 
+        /// <summary>
+        /// Gets the maximum number of bytes that the given number of characters can be decoded to, if the characters include a checksum.
+        /// </summary>
         public static int MaxBytesWithChecksum(int charCount) => MaxBytes(charCount) - CHECKSUM_SIZE;
 
         /// <summary>
@@ -202,14 +236,14 @@ namespace Base58Check
             if (data.Length == 0)
                 return Array.Empty<byte>();
 
-            var digits = DIGITS.AsSpan();
+            var digits = DIGIT_BYTES.AsSpan();
             var fiftyEight = new BigInteger(58);
 
             // Decode Base58 string to BigInteger 
             BigInteger intData = 0;
             for (int i = 0; i < data.Length; i++)
             {
-                int digit = digits.IndexOf(data[i]);
+                int digit = digits.IndexOf((byte)data[i]);
 
                 if (digit < 0)
                 {
