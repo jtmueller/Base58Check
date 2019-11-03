@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Buffers;
 using System.Numerics;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace Base58Check
 {
@@ -38,7 +38,10 @@ namespace Base58Check
         /// <returns></returns>
         public static string EncodePlain(ReadOnlySpan<byte> data)
         {
-            // Decode byte[] to BigInteger
+            if (data.Length == 0)
+                return string.Empty;
+
+            // Decode bytes to BigInteger
             var intData = BigInteger.Zero;
             for (int i = 0; i < data.Length; i++)
             {
@@ -49,21 +52,35 @@ namespace Base58Check
             var fiftyEight = new BigInteger(58);
 
             // Encode BigInteger to Base58 string
-            var result = new StringBuilder((int)(data.Length * (5.0 / 3.0)));
-            while (intData > BigInteger.Zero)
+            int pos = 0;
+            var result = ArrayPool<char>.Shared.Rent((int)(data.Length * (5.0 / 3.0)));
+            try
             {
-                int remainder = (int)(intData % fiftyEight);
-                intData /= fiftyEight;
-                result.Insert(0, digits[remainder]);
-            }
+                while (intData > BigInteger.Zero)
+                {
+                    intData = BigInteger.DivRem(intData, fiftyEight, out var remainder);
+                    result[pos++] = digits[(int)remainder];
+                }
 
-            // Prepend `1` for each leading 0 byte
-            for (int i = 0; i < data.Length && data[i] == 0; i++)
+                // Append `1` for each leading 0 byte
+                for (int i = 0; i < data.Length && data[i] == 0; i++)
+                {
+                    result[pos++] = '1';
+                }
+
+                return string.Create(pos, result, (chars, state) =>
+                {
+                    int len = chars.Length;
+                    for (int i = 0; i < len; i++)
+                    {
+                        chars[i] = state[len - i - 1];
+                    }
+                });
+            }
+            finally
             {
-                result.Insert(0, '1');
+                ArrayPool<char>.Shared.Return(result);
             }
-
-            return result.ToString(); ;
         }
 
         /// <summary>
