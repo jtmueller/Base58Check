@@ -7,8 +7,8 @@ namespace Tests
     public class EncodingTests
     {
         // Test cases from https://github.com/bitcoin/bitcoin/blob/master/src/test/base58_tests.cpp
-        readonly (string, byte[])[] _testCases = new[]{
-            ("", Array.Empty<byte>()),
+        private readonly (string text, byte[] bytes)[] _testCases = new[]{
+            (string.Empty, Array.Empty<byte>()),
             ("1112", new byte[]{0x00, 0x00, 0x00, 0x01}),
             ("2g", new byte[]{0x61}),
             ("a3gV", new byte[]{0x62,0x62,0x62}),
@@ -31,10 +31,8 @@ namespace Tests
         [Test]
         public void Encode()
         {
-            foreach (var tuple in _testCases)
+            foreach (var (expectedText, bytes) in _testCases)
             {
-                byte[] bytes = tuple.Item2;
-                string expectedText = tuple.Item1;
                 string actualText = Base58CheckEncoding.EncodePlain(bytes);
                 Assert.AreEqual(expectedText, actualText);
             }
@@ -43,12 +41,10 @@ namespace Tests
         [Test]
         public void Decode()
         {
-            foreach (var tuple in _testCases)
+            foreach (var (text, bytes) in _testCases)
             {
-                string text = tuple.Item1;
-                byte[] expectedBytes = tuple.Item2;
                 byte[] actualBytes = Base58CheckEncoding.DecodePlain(text);
-                Assert.AreEqual(BitConverter.ToString(expectedBytes), BitConverter.ToString(actualBytes));
+                Assert.AreEqual(BitConverter.ToString(bytes), BitConverter.ToString(actualBytes));
             }
         }
 

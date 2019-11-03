@@ -23,7 +23,7 @@ namespace Base58Check
         /// <returns></returns>
         public static string Encode(byte[] data)
         {
-            return EncodePlain(_AddCheckSum(data));
+            return EncodePlain(AddCheckSum(data));
         }
 
         /// <summary>
@@ -106,7 +106,7 @@ namespace Base58Check
             return result;
         }
 
-        private static byte[] _AddCheckSum(byte[] data)
+        private static byte[] AddCheckSum(byte[] data)
         {
             byte[] checkSum = GetCheckSum(data);
             byte[] dataWithCheckSum = ArrayHelpers.ConcatArrays(data, checkSum);
