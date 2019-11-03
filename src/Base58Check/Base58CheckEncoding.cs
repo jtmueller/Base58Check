@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace Base58Check
 {
@@ -13,7 +13,8 @@ namespace Base58Check
     /// </remarks>
     public static class Base58CheckEncoding
     {
-        private const int CHECK_SUM_SIZE = 4;
+        private const int CHECKSUM_SIZE = 4;
+        private const int HASH_BYTES = 32;
         private const string DIGITS = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
         /// <summary>
@@ -21,9 +22,13 @@ namespace Base58Check
         /// </summary>
         /// <param name="data">Data to be encoded</param>
         /// <returns></returns>
-        public static string Encode(byte[] data)
+        public static string Encode(ReadOnlySpan<byte> data)
         {
-            return EncodePlain(AddCheckSum(data));
+            Span<byte> dataWithChecksum = data.Length > 100 
+                ? new byte[data.Length + CHECKSUM_SIZE] 
+                : stackalloc byte[data.Length + CHECKSUM_SIZE];
+            _ = AddCheckSum(data, dataWithChecksum);
+            return EncodePlain(dataWithChecksum);
         }
 
         /// <summary>
@@ -31,27 +36,34 @@ namespace Base58Check
         /// </summary>
         /// <param name="data">The data to be encoded</param>
         /// <returns></returns>
-        public static string EncodePlain(byte[] data)
+        public static string EncodePlain(ReadOnlySpan<byte> data)
         {
             // Decode byte[] to BigInteger
-            var intData = data.Aggregate<byte, BigInteger>(0, (current, t) => current * 256 + t);
+            var intData = BigInteger.Zero;
+            for (int i = 0; i < data.Length; i++)
+            {
+                intData = (intData << 8) + data[i];
+            }
+
+            var digits = DIGITS.AsSpan();
+            var fiftyEight = new BigInteger(58);
 
             // Encode BigInteger to Base58 string
-            string result = string.Empty;
-            while (intData > 0)
+            var result = new StringBuilder(data.Length * 4);
+            while (intData > BigInteger.Zero)
             {
-                int remainder = (int)(intData % 58);
-                intData /= 58;
-                result = DIGITS[remainder] + result;
+                int remainder = (int)(intData % fiftyEight);
+                intData /= fiftyEight;
+                result.Insert(0, digits[remainder]);
             }
 
-            // Append `1` for each leading 0 byte
+            // Prepend `1` for each leading 0 byte
             for (int i = 0; i < data.Length && data[i] == 0; i++)
             {
-                result = '1' + result;
+                result.Insert(0, '1');
             }
 
-            return result;
+            return result.ToString(); ;
         }
 
         /// <summary>
@@ -59,14 +71,14 @@ namespace Base58Check
         /// </summary>
         /// <param name="data">Data to be decoded</param>
         /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
-        public static byte[] Decode(string data)
+        public static ReadOnlySpan<byte> Decode(ReadOnlySpan<char> data)
         {
-            byte[] dataWithCheckSum = DecodePlain(data);
-            byte[]? dataWithoutCheckSum = VerifyAndRemoveCheckSum(dataWithCheckSum);
+            var dataWithCheckSum = DecodePlain(data);
+            var dataWithoutCheckSum = VerifyAndRemoveCheckSum(dataWithCheckSum);
 
-            if (dataWithoutCheckSum == null)
+            if (dataWithoutCheckSum.IsEmpty)
             {
-                throw new FormatException("Base58 checksum is invalid");
+                throw new FormatException("Base58 checksum is invalid.");
             }
 
             return dataWithoutCheckSum;
@@ -77,63 +89,92 @@ namespace Base58Check
         /// </summary>
         /// <param name="data">Data to be decoded</param>
         /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
-        public static byte[] DecodePlain(string data)
+        public static byte[] DecodePlain(ReadOnlySpan<char> data)
         {
+            if (data.Length == 0)
+                return Array.Empty<byte>();
+
+            var digits = DIGITS.AsSpan();
+            var fiftyEight = new BigInteger(58);
+
             // Decode Base58 string to BigInteger 
             BigInteger intData = 0;
             for (int i = 0; i < data.Length; i++)
             {
-                int digit = DIGITS.IndexOf(data[i]); //Slow
+                int digit = digits.IndexOf(data[i]);
 
                 if (digit < 0)
                 {
-                    throw new FormatException(string.Format("Invalid Base58 character `{0}` at position {1}", data[i], i));
+                    throw new FormatException($"Invalid Base58 character '{data[i]}' at position {i}.");
                 }
 
-                intData = intData * 58 + digit;
+                intData = intData * fiftyEight + digit;
             }
 
             // Encode BigInteger to byte[]
             // Leading zero bytes get encoded as leading `1` characters
-            int leadingZeroCount = data.TakeWhile(c => c == '1').Count();
-            var leadingZeros = Enumerable.Repeat((byte)0, leadingZeroCount);
-            var bytesWithoutLeadingZeros =
-              intData.ToByteArray()
-              .Reverse()// to big endian
-              .SkipWhile(b => b == 0);//strip sign byte
-            byte[] result = leadingZeros.Concat(bytesWithoutLeadingZeros).ToArray();
+            int leadingZeroCount = 0;
+            for (int i = 0; i < data.Length && data[i] == '1'; i++)
+                leadingZeroCount++;
 
-            return result;
+            if (intData.IsZero)
+            {
+                return leadingZeroCount == 0 ? Array.Empty<byte>() : new byte[leadingZeroCount];
+            }
+
+            int byteCount = intData.GetByteCount(isUnsigned: true);
+            byte[] result = new byte[leadingZeroCount + byteCount];
+
+            if (intData.TryWriteBytes(result.AsSpan(leadingZeroCount..), out int _, isUnsigned: true, isBigEndian: true))
+            {
+                return result;
+            }
+
+            throw new FormatException("Unable to decode the given Base58 string.");
         }
 
-        private static byte[] AddCheckSum(byte[] data)
+        private static int AddCheckSum(ReadOnlySpan<byte> data, Span<byte> destination)
         {
-            byte[] checkSum = GetCheckSum(data);
-            byte[] dataWithCheckSum = ArrayHelpers.ConcatArrays(data, checkSum);
+            Span<byte> checksum = stackalloc byte[CHECKSUM_SIZE];
+            if (GetCheckSum(data, checksum))
+            {
+                data.CopyTo(destination);
+                checksum.CopyTo(destination[^CHECKSUM_SIZE..]);
+                return data.Length + CHECKSUM_SIZE;
+            }
 
-            return dataWithCheckSum;
+            throw new InvalidOperationException("Could not calculate checksum.");
         }
 
-        //Returns null if the checksum is invalid
-        private static byte[]? VerifyAndRemoveCheckSum(byte[] data)
+        // Returns an empty span if the checksum is invalid
+        private static ReadOnlySpan<byte> VerifyAndRemoveCheckSum(ReadOnlySpan<byte> data)
         {
-            byte[] result = ArrayHelpers.SubArray(data, 0, data.Length - CHECK_SUM_SIZE);
-            byte[] givenCheckSum = ArrayHelpers.SubArray(data, data.Length - CHECK_SUM_SIZE);
-            byte[] correctCheckSum = GetCheckSum(result);
+            var result = data[..^CHECKSUM_SIZE];
+            var givenCheckSum = data[^CHECKSUM_SIZE..];
+            Span<byte> correctCheckSum = stackalloc byte[CHECKSUM_SIZE];
 
-            return givenCheckSum.SequenceEqual(correctCheckSum) ? result : null;
+            if (GetCheckSum(result, correctCheckSum))
+            {
+                return givenCheckSum.SequenceEqual(correctCheckSum) ? result : Span<byte>.Empty;
+            }
+
+            return Span<byte>.Empty;
         }
 
-        private static byte[] GetCheckSum(byte[] data)
+        private static bool GetCheckSum(ReadOnlySpan<byte> data, Span<byte> destination)
         {
-            SHA256 sha256 = new SHA256Managed();
-            byte[] hash1 = sha256.ComputeHash(data);
-            byte[] hash2 = sha256.ComputeHash(hash1);
+            using var sha = SHA256.Create();
+            Span<byte> hash1 = stackalloc byte[HASH_BYTES];
+            Span<byte> hash2 = stackalloc byte[HASH_BYTES];
 
-            byte[] result = new byte[CHECK_SUM_SIZE];
-            Buffer.BlockCopy(hash2, 0, result, 0, result.Length);
+            if (sha.TryComputeHash(data, hash1, out int written) &&
+                sha.TryComputeHash(hash1[..written], hash2, out written))
+            {
+                hash2[..CHECKSUM_SIZE].CopyTo(destination);
+                return true;
+            }
 
-            return result;
+            return false;
         }
     }
 }

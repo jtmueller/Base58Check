@@ -1,13 +1,14 @@
 ﻿using Base58Check;
 using NUnit.Framework;
 using System;
+using System.Collections;
 
 namespace Tests
 {
     public class EncodingTests
     {
         // Test cases from https://github.com/bitcoin/bitcoin/blob/master/src/test/base58_tests.cpp
-        private readonly (string text, byte[] bytes)[] _testCases = new[]{
+        private static readonly (string text, byte[] bytes)[] TEST_CASES = new[] {
             (string.Empty, Array.Empty<byte>()),
             ("1112", new byte[]{0x00, 0x00, 0x00, 0x01}),
             ("2g", new byte[]{0x61}),
@@ -28,25 +29,33 @@ namespace Tests
         private const string ADDRESS_TEXT = "16UwLL9Risc3QfPqBUvKofHmBQ7wMtjvM";
         private const string BROKEN_ADDRESS_TEXT = "16UwLl9Risc3QfPqBUvKofHmBQ7wMtjvM";
 
-        [Test]
-        public void Encode()
+        public static IEnumerable EncodeTestCases
         {
-            foreach (var (expectedText, bytes) in _testCases)
+            get
             {
-                string actualText = Base58CheckEncoding.EncodePlain(bytes);
-                Assert.AreEqual(expectedText, actualText);
+                foreach (var (text, bytes) in TEST_CASES)
+                {
+                    yield return new TestCaseData(bytes).Returns(text);
+                }
             }
         }
 
-        [Test]
-        public void Decode()
+        public static IEnumerable DecodeTestCases
         {
-            foreach (var (text, bytes) in _testCases)
+            get
             {
-                byte[] actualBytes = Base58CheckEncoding.DecodePlain(text);
-                Assert.AreEqual(BitConverter.ToString(bytes), BitConverter.ToString(actualBytes));
+                foreach (var (text, bytes) in TEST_CASES)
+                {
+                    yield return new TestCaseData(text).Returns(bytes);
+                }
             }
         }
+
+        [TestCaseSource(typeof(EncodingTests), nameof(EncodeTestCases))]
+        public string EncodePlain(byte[] bytes) => Base58CheckEncoding.EncodePlain(bytes);
+
+        [TestCaseSource(typeof(EncodingTests), nameof(DecodeTestCases))]
+        public byte[] DecodePlain(string text) => Base58CheckEncoding.DecodePlain(text);
 
         [Test]
         public void DecodeInvalidChar()
@@ -65,8 +74,8 @@ namespace Tests
         [Test]
         public void DecodeBitcoinAddress()
         {
-            byte[] actualBytes = Base58CheckEncoding.Decode(ADDRESS_TEXT);
-            Assert.AreEqual(BitConverter.ToString(AddressBytes), BitConverter.ToString(actualBytes));
+            byte[] actualBytes = Base58CheckEncoding.Decode(ADDRESS_TEXT).ToArray();
+            Assert.AreEqual(AddressBytes, actualBytes);
         }
 
         [Test]
