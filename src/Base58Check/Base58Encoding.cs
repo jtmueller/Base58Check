@@ -269,14 +269,13 @@ namespace Base58Check
             if (data.Length == 0)
                 return Array.Empty<byte>();
 
-            var digits = DIGITS_BYTE.AsSpan();
             var fiftyEight = new BigInteger(58);
 
             // Decode Base58 string to BigInteger 
             BigInteger intData = 0;
             for (int i = 0; i < data.Length; i++)
             {
-                int digit = digits.IndexOf((byte)data[i]);
+                int digit = Array.IndexOf(DIGITS_BYTE, (byte)data[i], 0);
 
                 if (digit < 0)
                 {
@@ -342,7 +341,6 @@ namespace Base58Check
             if (data.Length == 0)
                 return 0;
 
-            var digits = DIGITS_BYTE.AsSpan();
             var fiftyEight = new BigInteger(58);
             byte one = (byte)'1';
 
@@ -350,7 +348,7 @@ namespace Base58Check
             BigInteger intData = 0;
             for (int i = 0; i < data.Length; i++)
             {
-                int digit = digits.IndexOf(data[i]);
+                int digit = Array.IndexOf(DIGITS_BYTE, data[i], 0);
 
                 if (digit < 0)
                 {

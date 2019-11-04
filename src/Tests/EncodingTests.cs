@@ -93,6 +93,11 @@ namespace Tests
             {
                 var guid = i == 0 ? Guid.Empty : Guid.NewGuid();
                 int written = Base58Encoding.EncodeGuid(guid, chars);
+
+                //Console.WriteLine("{0:N} ({1})", guid, 32);
+                //Console.WriteLine("{0} ({1})", chars[..written].ToString(), written);
+                //Console.WriteLine();
+
                 var decoded = Base58Encoding.DecodeGuid(chars[..written]);
                 Assert.AreEqual(guid, decoded);
             }
