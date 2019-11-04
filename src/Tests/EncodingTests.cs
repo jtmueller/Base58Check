@@ -52,37 +52,50 @@ namespace Tests
         }
 
         [TestCaseSource(typeof(EncodingTests), nameof(EncodeTestCases))]
-        public string EncodePlain(byte[] bytes) => Base58CheckEncoding.EncodePlain(bytes);
+        public string EncodePlain(byte[] bytes) => Base58Encoding.EncodePlain(bytes);
 
         [TestCaseSource(typeof(EncodingTests), nameof(DecodeTestCases))]
-        public byte[] DecodePlain(string text) => Base58CheckEncoding.DecodePlain(text);
+        public byte[] DecodePlain(string text) => Base58Encoding.DecodePlain(text);
 
         [Test]
         public void DecodeInvalidChar()
         {
-            Assert.That(() => Base58CheckEncoding.DecodePlain("ab0"),
+            Assert.That(() => Base58Encoding.DecodePlain("ab0"),
                 Throws.InstanceOf<FormatException>());
         }
 
         [Test]
         public void EncodeBitcoinAddress()
         {
-            string actualText = Base58CheckEncoding.EncodeWithChecksum(AddressBytes);
+            string actualText = Base58Encoding.EncodeWithChecksum(AddressBytes);
             Assert.AreEqual(ADDRESS_TEXT, actualText);
         }
 
         [Test]
         public void DecodeBitcoinAddress()
         {
-            byte[] actualBytes = Base58CheckEncoding.DecodeWithChecksum(ADDRESS_TEXT).ToArray();
+            byte[] actualBytes = Base58Encoding.DecodeWithChecksum(ADDRESS_TEXT).ToArray();
             Assert.AreEqual(AddressBytes, actualBytes);
         }
 
         [Test]
         public void DecodeBrokenBitcoinAddress()
         {
-            Assert.That(() => Base58CheckEncoding.DecodeWithChecksum(BROKEN_ADDRESS_TEXT),
+            Assert.That(() => Base58Encoding.DecodeWithChecksum(BROKEN_ADDRESS_TEXT),
                 Throws.InstanceOf<FormatException>());
+        }
+
+        [Test]
+        public void GuidEncodeDecode()
+        {
+            Span<char> chars = stackalloc char[Base58Encoding.MaxChars(16)];
+            for (int i = 0; i < 16; i++)
+            {
+                var guid = i == 0 ? Guid.Empty : Guid.NewGuid();
+                int written = Base58Encoding.EncodeGuid(guid, chars);
+                var decoded = Base58Encoding.DecodeGuid(chars[..written]);
+                Assert.AreEqual(guid, decoded);
+            }
         }
     }
 }

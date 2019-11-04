@@ -13,11 +13,12 @@ namespace Base58Check
     /// <remarks>
     /// See here for more details: https://en.bitcoin.it/wiki/Base58Check_encoding
     /// </remarks>
-    public static class Base58CheckEncoding
+    public static class Base58Encoding
     {
         private const int CHECKSUM_SIZE = 4;
         private const int HASH_BYTES = 32;
-        private static readonly byte[] DIGIT_BYTES = Encoding.UTF8.GetBytes("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz");
+        private const int GUID_BYTES = 16;
+        private static readonly byte[] DIGITS_BYTE = Encoding.UTF8.GetBytes("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz");
 
         /// <summary>
         /// Encodes data with a 4-byte checksum
@@ -136,7 +137,7 @@ namespace Base58Check
             while (intData > BigInteger.Zero)
             {
                 intData = BigInteger.DivRem(intData, fiftyEight, out var remainder);
-                destination[pos++] = DIGIT_BYTES[(int)remainder];
+                destination[pos++] = DIGITS_BYTE[(int)remainder];
             }
 
             // Append `1` for each leading 0 byte
@@ -148,6 +149,38 @@ namespace Base58Check
             destination[..pos].Reverse();
 
             return pos;
+        }
+
+        /// <summary>
+        /// Encodes a Guid to a 22-character Base-58 string.
+        /// </summary>
+        public static string EncodeGuid(Guid guid)
+        {
+            Span<byte> bytes = stackalloc byte[GUID_BYTES];
+            guid.TryWriteBytes(bytes);
+            return EncodePlain(bytes);
+        }
+
+        /// <summary>
+        /// Encodes a Guid to a 22-character Base-58 span.
+        /// </summary>
+        public static int EncodeGuid(Guid guid, Span<char> destination)
+        {
+            Span<byte> bytes = stackalloc byte[GUID_BYTES];
+            guid.TryWriteBytes(bytes);
+            return EncodePlain(bytes, destination);
+        }
+
+        /// <summary>
+        /// Decodes a Guid from a 22-character Base-58 string or span.
+        /// </summary>
+        public static Guid DecodeGuid(ReadOnlySpan<char> chars)
+        {
+            Span<byte> bytes = stackalloc byte[GUID_BYTES];
+            int written = DecodePlain(chars, bytes);
+            if (written < bytes.Length)
+                throw new FormatException("Not enough bytes decoded for a Guid.");
+            return new Guid(bytes);
         }
 
         /// <summary>
@@ -236,7 +269,7 @@ namespace Base58Check
             if (data.Length == 0)
                 return Array.Empty<byte>();
 
-            var digits = DIGIT_BYTES.AsSpan();
+            var digits = DIGITS_BYTE.AsSpan();
             var fiftyEight = new BigInteger(58);
 
             // Decode Base58 string to BigInteger 
@@ -309,7 +342,7 @@ namespace Base58Check
             if (data.Length == 0)
                 return 0;
 
-            var digits = DIGIT_BYTES.AsSpan();
+            var digits = DIGITS_BYTE.AsSpan();
             var fiftyEight = new BigInteger(58);
             byte one = (byte)'1';
 
