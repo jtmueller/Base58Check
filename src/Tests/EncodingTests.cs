@@ -86,6 +86,19 @@ namespace Tests
         }
 
         [Test]
+        public void TryDecodeBitcoinAddress()
+        {
+            Assert.True(Base58Encoding.TryDecodeWithChecksum(ADDRESS_TEXT, out var actualBytes));
+            Assert.AreEqual(AddressBytes, actualBytes.ToArray());
+        }
+
+        [Test]
+        public void TryDecodeBrokenBitcoinAddress()
+        {
+            Assert.False(Base58Encoding.TryDecodeWithChecksum(BROKEN_ADDRESS_TEXT, out var _));
+        }
+
+        [Test]
         public void GuidEncodeDecode()
         {
             Span<char> chars = stackalloc char[Base58Encoding.MaxChars(16)];
@@ -99,6 +112,24 @@ namespace Tests
                 //Console.WriteLine();
 
                 var decoded = Base58Encoding.DecodeGuid(chars[..written]);
+                Assert.AreEqual(guid, decoded);
+            }
+        }
+
+        [Test]
+        public void GuidEncodeTryDecode()
+        {
+            Span<char> chars = stackalloc char[Base58Encoding.MaxChars(16)];
+            for (int i = 0; i < 16; i++)
+            {
+                var guid = i == 0 ? Guid.Empty : Guid.NewGuid();
+                int written = Base58Encoding.EncodeGuid(guid, chars);
+
+                //Console.WriteLine("{0:N} ({1})", guid, 32);
+                //Console.WriteLine("{0} ({1})", chars[..written].ToString(), written);
+                //Console.WriteLine();
+
+                Assert.IsTrue(Base58Encoding.TryDecodeGuid(chars[..written], out var decoded));
                 Assert.AreEqual(guid, decoded);
             }
         }

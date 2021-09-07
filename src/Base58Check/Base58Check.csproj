@@ -16,7 +16,7 @@
     <PackageProjectUrl>https://github.com/adamcaudill/Base58Check</PackageProjectUrl>
     <Description>Base58Check is a C# implementation of Base58 Checked Encoding</Description>
     <PackageTags>Base58 Bitcoin IPFS "Checked Encoding"</PackageTags>
-    <PackageReleaseNotes>Converted to .NET Standard 2.0, 2.1, improved performance and memory allocation.</PackageReleaseNotes>
+    <PackageReleaseNotes>Converted to .NET Standard 2.1, improved performance and memory allocation.</PackageReleaseNotes>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
