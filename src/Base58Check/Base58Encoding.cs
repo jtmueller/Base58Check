@@ -49,19 +49,18 @@ public static class Base58Encoding
     /// <returns></returns>
     public static int EncodeWithChecksum(ReadOnlySpan<byte> data, Span<byte> destination)
     {
-        byte[]? pooled = data.Length > 100 ? ArrayPool<byte>.Shared.Rent(data.Length + CHECKSUM_SIZE) : null;
+        int size = data.Length + CHECKSUM_SIZE;
+        byte[]? pooled = size > 100 ? ArrayPool<byte>.Shared.Rent(size) : null;
         try
         {
-            Span<byte> dataWithChecksum = pooled ?? stackalloc byte[data.Length + CHECKSUM_SIZE];
-            _ = AddCheckSum(data, dataWithChecksum);
-            return EncodePlain(dataWithChecksum, destination);
+            Span<byte> dataWithChecksum = pooled ?? stackalloc byte[size];
+            int written = AddCheckSum(data, dataWithChecksum);
+            return EncodePlain(dataWithChecksum[..written], destination);
         }
         finally
         {
             if (pooled is not null)
-            {
                 ArrayPool<byte>.Shared.Return(pooled);
-            }
         }
     }
 
@@ -75,15 +74,18 @@ public static class Base58Encoding
         if (data.IsEmpty)
             return string.Empty;
 
-        byte[] result = ArrayPool<byte>.Shared.Rent(MaxChars(data.Length));
+        int maxChars = MaxChars(data.Length);
+        byte[]? pooled = maxChars > 100 ? ArrayPool<byte>.Shared.Rent(maxChars) : null;
         try
         {
+            Span<byte> result = pooled ?? stackalloc byte[maxChars];
             int written = EncodePlain(data, result);
-            return Encoding.UTF8.GetString(result.AsSpan(..written));
+            return Encoding.UTF8.GetString(result[..written]);
         }
         finally
         {
-            ArrayPool<byte>.Shared.Return(result);
+            if (pooled is not null)
+                ArrayPool<byte>.Shared.Return(pooled);
         }
     }
 
@@ -98,15 +100,19 @@ public static class Base58Encoding
         if (data.IsEmpty)
             return 0;
 
-        byte[] result = ArrayPool<byte>.Shared.Rent(MaxChars(data.Length));
+        int maxChars = MaxChars(data.Length);
+
+        byte[]? pooled = maxChars > 100 ? ArrayPool<byte>.Shared.Rent(maxChars) : null;
         try
         {
+            Span<byte> result = pooled ?? stackalloc byte[maxChars];
             int written = EncodePlain(data, result);
-            return Encoding.UTF8.GetChars(result.AsSpan(..written), destination);
+            return Encoding.UTF8.GetChars(result[..written], destination);
         }
         finally
         {
-            ArrayPool<byte>.Shared.Return(result);
+            if (pooled is not null)
+                ArrayPool<byte>.Shared.Return(pooled);
         }
     }
 
