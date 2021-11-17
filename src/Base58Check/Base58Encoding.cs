@@ -129,13 +129,9 @@ public static class Base58Encoding
             return 0;
 
         // Decode bytes to BigInteger
-        var intData = BigInteger.Zero;
-        for (int i = 0; i < data.Length; i++)
-        {
-            intData = (intData << 8) | data[i];
-        }
+        BigInteger intData = new(data, isUnsigned: true, isBigEndian: true);
 
-        var fiftyEight = new BigInteger(58);
+        BigInteger fiftyEight = 58;
         byte one = (byte)'1';
 
         // Encode BigInteger to Base58 char bytes
@@ -370,7 +366,7 @@ public static class Base58Encoding
         if (data.IsEmpty)
             return Array.Empty<byte>();
 
-        var fiftyEight = new BigInteger(58);
+        BigInteger fiftyEight = 58;
 
         // Decode Base58 string to BigInteger 
         var digits = DIGITS_BYTE.Span;
@@ -390,8 +386,7 @@ public static class Base58Encoding
         // Encode BigInteger to byte[]
         // Leading zero bytes get encoded as leading `1` characters
         int leadingZeroCount = 0;
-        for (int i = 0; i < data.Length && data[i] == '1'; i++)
-            leadingZeroCount++;
+        for (; leadingZeroCount < data.Length && data[leadingZeroCount] == '1'; leadingZeroCount++);
 
         if (intData.IsZero)
         {
@@ -422,7 +417,7 @@ public static class Base58Encoding
             return true;
         }
 
-        var fiftyEight = new BigInteger(58);
+        BigInteger fiftyEight = 58;
 
         // Decode Base58 string to BigInteger 
         var digits = DIGITS_BYTE.Span;
@@ -443,8 +438,7 @@ public static class Base58Encoding
         // Encode BigInteger to byte[]
         // Leading zero bytes get encoded as leading `1` characters
         int leadingZeroCount = 0;
-        for (int i = 0; i < data.Length && data[i] == '1'; i++)
-            leadingZeroCount++;
+        for (; leadingZeroCount < data.Length && data[leadingZeroCount] == '1'; leadingZeroCount++);
 
         if (intData.IsZero)
         {
@@ -515,7 +509,7 @@ public static class Base58Encoding
         if (data.IsEmpty)
             return 0;
 
-        var fiftyEight = new BigInteger(58);
+        BigInteger fiftyEight = 58;
         byte one = (byte)'1';
 
         // Decode Base58 string to BigInteger 
@@ -536,8 +530,7 @@ public static class Base58Encoding
         // Encode BigInteger to byte[]
         // Leading zero bytes get encoded as leading `1` characters
         int leadingZeroCount = 0;
-        for (int i = 0; i < data.Length && data[i] == one; i++)
-            leadingZeroCount++;
+        for (; leadingZeroCount < data.Length && data[leadingZeroCount] == one; leadingZeroCount++);
 
         if (leadingZeroCount > 0)
         {
@@ -571,7 +564,7 @@ public static class Base58Encoding
             return true;
         }
 
-        var fiftyEight = new BigInteger(58);
+        BigInteger fiftyEight = 58;
         byte one = (byte)'1';
 
         // Decode Base58 string to BigInteger 
@@ -593,8 +586,7 @@ public static class Base58Encoding
         // Encode BigInteger to byte[]
         // Leading zero bytes get encoded as leading `1` characters
         int leadingZeroCount = 0;
-        for (int i = 0; i < data.Length && data[i] == one; i++)
-            leadingZeroCount++;
+        for (; leadingZeroCount < data.Length && data[leadingZeroCount] == one; leadingZeroCount++);
 
         if (leadingZeroCount > 0)
         {
