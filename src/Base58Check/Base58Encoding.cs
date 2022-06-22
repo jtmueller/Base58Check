@@ -28,15 +28,18 @@ public static class Base58Encoding
     /// <returns></returns>
     public static string EncodeWithChecksum(ReadOnlySpan<byte> data)
     {
-        byte[] result = ArrayPool<byte>.Shared.Rent(MaxCharsWithChecksum(data.Length));
+        int size = MaxCharsWithChecksum(data.Length);
+        byte[]? pooled = size > 100 ? ArrayPool<byte>.Shared.Rent(size) : null;
         try
         {
+            Span<byte> result = pooled ?? stackalloc byte[size];
             int written = EncodeWithChecksum(data, result);
-            return Encoding.UTF8.GetString(result.AsSpan(..written));
+            return Encoding.UTF8.GetString(result[..written]);
         }
         finally
         {
-            ArrayPool<byte>.Shared.Return(result);
+            if (pooled is not null)
+                ArrayPool<byte>.Shared.Return(pooled);
         }
     }
 
