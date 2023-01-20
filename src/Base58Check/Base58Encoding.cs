@@ -179,6 +179,16 @@ public static class Base58Encoding
     }
 
     /// <summary>
+    /// Encodes a Guid to a 22-character Base-58 span.
+    /// </summary>
+    public static int EncodeGuid(Guid guid, Span<byte> destination)
+    {
+        Span<byte> bytes = stackalloc byte[GUID_BYTES];
+        guid.TryWriteBytes(bytes);
+        return EncodePlain(bytes, destination);
+    }
+
+    /// <summary>
     /// Decodes a Guid from a 22-character Base-58 string or span.
     /// </summary>
     public static Guid DecodeGuid(ReadOnlySpan<char> chars)
@@ -193,7 +203,36 @@ public static class Base58Encoding
     /// <summary>
     /// Decodes a Guid from a 22-character Base-58 string or span.
     /// </summary>
+    public static Guid DecodeGuid(ReadOnlySpan<byte> chars)
+    {
+        Span<byte> bytes = stackalloc byte[GUID_BYTES];
+        int written = DecodePlain(chars, bytes);
+        if (written < bytes.Length)
+            throw new FormatException("Not enough bytes decoded for a Guid.");
+        return new Guid(bytes);
+    }
+
+    /// <summary>
+    /// Decodes a Guid from a 22-character Base-58 string or span.
+    /// </summary>
     public static bool TryDecodeGuid(ReadOnlySpan<char> chars, out Guid decoded)
+    {
+        Span<byte> bytes = stackalloc byte[GUID_BYTES];
+        int written = DecodePlain(chars, bytes);
+        if (written < bytes.Length)
+        {
+            decoded = default;
+            return false;
+        }
+
+        decoded = new Guid(bytes);
+        return true;
+    }
+
+    /// <summary>
+    /// Decodes a Guid from a 22-character Base-58 string or span.
+    /// </summary>
+    public static bool TryDecodeGuid(ReadOnlySpan<byte> chars, out Guid decoded)
     {
         Span<byte> bytes = stackalloc byte[GUID_BYTES];
         int written = DecodePlain(chars, bytes);
@@ -632,12 +671,8 @@ public static class Base58Encoding
         var givenCheckSum = data[^CHECKSUM_SIZE..];
 
         Span<byte> correctCheckSum = stackalloc byte[CHECKSUM_SIZE];
-        if (GetCheckSum(result, correctCheckSum))
-        {
-            return givenCheckSum.SequenceEqual(correctCheckSum) ? result : Span<byte>.Empty;
-        }
-
-        return Span<byte>.Empty;
+        return (GetCheckSum(result, correctCheckSum) && givenCheckSum.SequenceEqual(correctCheckSum))
+            ? result : Span<byte>.Empty;
     }
 
     private static bool GetCheckSum(ReadOnlySpan<byte> data, Span<byte> destination)
