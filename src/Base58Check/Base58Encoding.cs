@@ -17,7 +17,7 @@ public static class Base58Encoding
     private const int CHECKSUM_SIZE = 4;
     private const int HASH_BYTES = 32;
     private const int GUID_BYTES = 16;
-    private static readonly ReadOnlyMemory<byte> DIGITS_BYTE = Encoding.UTF8.GetBytes("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz");
+    private static ReadOnlySpan<byte> DIGITS_BYTE => "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"u8;
 
     // TODO: Better unit test coverage (maybe convert to xunit)
 
@@ -140,7 +140,7 @@ public static class Base58Encoding
         // Encode BigInteger to Base58 char bytes
         int pos = 0;
 
-        var digits = DIGITS_BYTE.Span;
+        var digits = DIGITS_BYTE;
         while (intData > BigInteger.Zero)
         {
             intData = BigInteger.DivRem(intData, fiftyEight, out var remainder);
@@ -372,7 +372,7 @@ public static class Base58Encoding
         BigInteger fiftyEight = 58;
 
         // Decode Base58 string to BigInteger 
-        var digits = DIGITS_BYTE.Span;
+        var digits = DIGITS_BYTE;
         BigInteger intData = 0;
         for (int i = 0; i < data.Length; i++)
         {
@@ -423,7 +423,7 @@ public static class Base58Encoding
         BigInteger fiftyEight = 58;
 
         // Decode Base58 string to BigInteger 
-        var digits = DIGITS_BYTE.Span;
+        var digits = DIGITS_BYTE;
         BigInteger intData = 0;
         for (int i = 0; i < data.Length; i++)
         {
@@ -516,7 +516,7 @@ public static class Base58Encoding
         byte one = (byte)'1';
 
         // Decode Base58 string to BigInteger 
-        var digits = DIGITS_BYTE.Span;
+        var digits = DIGITS_BYTE;
         BigInteger intData = 0;
         for (int i = 0; i < data.Length; i++)
         {
@@ -571,7 +571,7 @@ public static class Base58Encoding
         byte one = (byte)'1';
 
         // Decode Base58 string to BigInteger 
-        var digits = DIGITS_BYTE.Span;
+        var digits = DIGITS_BYTE;
         BigInteger intData = 0;
         for (int i = 0; i < data.Length; i++)
         {
