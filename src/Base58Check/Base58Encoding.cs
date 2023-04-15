@@ -255,6 +255,7 @@ public static class Base58Encoding
     /// <summary>
     /// Gets the maximum number of characters that the given number of bytes can be encoded to, including checksum characters.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int MaxCharsWithChecksum(int byteCount) => MaxChars(byteCount + CHECKSUM_SIZE);
 
     /// <summary>
@@ -266,6 +267,7 @@ public static class Base58Encoding
     /// <summary>
     /// Gets the maximum number of bytes that the given number of characters can be decoded to, if the characters include a checksum.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int MaxBytesWithChecksum(int charCount) => MaxBytes(charCount) - CHECKSUM_SIZE;
 
     /// <summary>
@@ -428,7 +430,7 @@ public static class Base58Encoding
         // Encode BigInteger to byte[]
         // Leading zero bytes get encoded as leading `1` characters
         int leadingZeroCount = 0;
-        for (; leadingZeroCount < data.Length && data[leadingZeroCount] == '1'; leadingZeroCount++);
+        for (; leadingZeroCount < data.Length && data[leadingZeroCount] == '1'; leadingZeroCount++) ;
 
         if (intData.IsZero)
         {
@@ -480,7 +482,7 @@ public static class Base58Encoding
         // Encode BigInteger to byte[]
         // Leading zero bytes get encoded as leading `1` characters
         int leadingZeroCount = 0;
-        for (; leadingZeroCount < data.Length && data[leadingZeroCount] == '1'; leadingZeroCount++);
+        for (; leadingZeroCount < data.Length && data[leadingZeroCount] == '1'; leadingZeroCount++) ;
 
         if (intData.IsZero)
         {
@@ -572,7 +574,7 @@ public static class Base58Encoding
         // Encode BigInteger to byte[]
         // Leading zero bytes get encoded as leading `1` characters
         int leadingZeroCount = 0;
-        for (; leadingZeroCount < data.Length && data[leadingZeroCount] == one; leadingZeroCount++);
+        for (; leadingZeroCount < data.Length && data[leadingZeroCount] == one; leadingZeroCount++) ;
 
         if (leadingZeroCount > 0)
         {
@@ -628,7 +630,7 @@ public static class Base58Encoding
         // Encode BigInteger to byte[]
         // Leading zero bytes get encoded as leading `1` characters
         int leadingZeroCount = 0;
-        for (; leadingZeroCount < data.Length && data[leadingZeroCount] == one; leadingZeroCount++);
+        for (; leadingZeroCount < data.Length && data[leadingZeroCount] == one; leadingZeroCount++) ;
 
         if (leadingZeroCount > 0)
         {
@@ -675,11 +677,32 @@ public static class Base58Encoding
             ? result : Span<byte>.Empty;
     }
 
+#if NET6_0_OR_GREATER
+
+    private static bool GetCheckSum(ReadOnlySpan<byte> data, Span<byte> destination)
+    {
+        Span<byte> hash = stackalloc byte[HASH_BYTES * 2];
+        var hash1 = hash[..HASH_BYTES];
+        var hash2 = hash[HASH_BYTES..];
+
+        if (SHA256.TryHashData(data, hash1, out int written) &&
+            SHA256.TryHashData(hash1[..written], hash2, out written))
+        {
+            hash2[..CHECKSUM_SIZE].CopyTo(destination);
+            return true;
+        }
+
+        return false;
+    }
+
+#else
+
     private static bool GetCheckSum(ReadOnlySpan<byte> data, Span<byte> destination)
     {
         using var sha = SHA256.Create();
-        Span<byte> hash1 = stackalloc byte[HASH_BYTES];
-        Span<byte> hash2 = stackalloc byte[HASH_BYTES];
+        Span<byte> hash = stackalloc byte[HASH_BYTES * 2];
+        var hash1 = hash[..HASH_BYTES];
+        var hash2 = hash[HASH_BYTES..];
 
         if (sha.TryComputeHash(data, hash1, out int written) &&
             sha.TryComputeHash(hash1[..written], hash2, out written))
@@ -690,4 +713,6 @@ public static class Base58Encoding
 
         return false;
     }
+
+#endif
 }
