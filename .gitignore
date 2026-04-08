@@ -176,3 +176,5 @@ FakesAssemblies/
 # Visual Studio settings
 .vs/
 .vscode/
+
+**/.idea/**/*
