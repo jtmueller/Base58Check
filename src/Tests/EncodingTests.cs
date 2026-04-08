@@ -7,7 +7,7 @@ namespace Tests;
 public class EncodingTests
 {
     // Test cases from https://github.com/bitcoin/bitcoin/blob/master/src/test/base58_tests.cpp
-    private static readonly (string text, byte[] bytes)[] TEST_CASES = new[] {
+    private static readonly (string text, byte[] bytes)[] TestCases = new[] {
         (string.Empty, Array.Empty<byte>()),
         ("1112", new byte[]{0x00, 0x00, 0x00, 0x01}),
         ("2g", "a"u8.ToArray()),
@@ -25,14 +25,14 @@ public class EncodingTests
 
     // Example address from https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
     private static readonly byte[] AddressBytes = new byte[] { 0x00, 0x01, 0x09, 0x66, 0x77, 0x60, 0x06, 0x95, 0x3D, 0x55, 0x67, 0x43, 0x9E, 0x5E, 0x39, 0xF8, 0x6A, 0x0D, 0x27, 0x3B, 0xEE };
-    private const string ADDRESS_TEXT = "16UwLL9Risc3QfPqBUvKofHmBQ7wMtjvM";
-    private const string BROKEN_ADDRESS_TEXT = "16UwLl9Risc3QfPqBUvKofHmBQ7wMtjvM";
+    private const string AddressText = "16UwLL9Risc3QfPqBUvKofHmBQ7wMtjvM";
+    private const string BrokenAddressText = "16UwLl9Risc3QfPqBUvKofHmBQ7wMtjvM";
 
     public static IEnumerable EncodeTestCases
     {
         get
         {
-            foreach (var (text, bytes) in TEST_CASES)
+            foreach (var (text, bytes) in TestCases)
             {
                 yield return new TestCaseData(bytes).Returns(text);
             }
@@ -43,7 +43,7 @@ public class EncodingTests
     {
         get
         {
-            foreach (var (text, bytes) in TEST_CASES)
+            foreach (var (text, bytes) in TestCases)
             {
                 yield return new TestCaseData(text).Returns(bytes);
             }
@@ -66,67 +66,57 @@ public class EncodingTests
     [Test]
     public void EncodeBitcoinAddress()
     {
-        string actualText = Base58Encoding.EncodeWithChecksum(AddressBytes);
-        Assert.AreEqual(ADDRESS_TEXT, actualText);
+        var actualText = Base58Encoding.EncodeWithChecksum(AddressBytes);
+        Assert.That(actualText, Is.EqualTo(AddressText));
     }
 
     [Test]
     public void DecodeBitcoinAddress()
     {
-        byte[] actualBytes = Base58Encoding.DecodeWithChecksum(ADDRESS_TEXT).ToArray();
-        Assert.AreEqual(AddressBytes, actualBytes);
+        var actualBytes = Base58Encoding.DecodeWithChecksum(AddressText).ToArray();
+        Assert.That(actualBytes, Is.EqualTo(AddressBytes));
     }
 
     [Test]
     public void DecodeBrokenBitcoinAddress()
     {
-        Assert.That(() => Base58Encoding.DecodeWithChecksum(BROKEN_ADDRESS_TEXT),
+        Assert.That(() => Base58Encoding.DecodeWithChecksum(BrokenAddressText),
             Throws.InstanceOf<FormatException>());
     }
 
     [Test]
     public void TryDecodeBitcoinAddress()
     {
-        Assert.True(Base58Encoding.TryDecodeWithChecksum(ADDRESS_TEXT, out var actualBytes));
-        Assert.AreEqual(AddressBytes, actualBytes.ToArray());
+        Assert.That(Base58Encoding.TryDecodeWithChecksum(AddressText, out var actualBytes), Is.True);
+        Assert.That(actualBytes.ToArray(), Is.EqualTo(AddressBytes));
     }
 
     [Test]
-    public void TryDecodeBrokenBitcoinAddress() => Assert.False(Base58Encoding.TryDecodeWithChecksum(BROKEN_ADDRESS_TEXT, out var _));
+    public void TryDecodeBrokenBitcoinAddress() => Assert.That(Base58Encoding.TryDecodeWithChecksum(BrokenAddressText, out var _), Is.False);
 
     [Test]
     public void GuidEncodeDecode()
     {
-        Span<char> chars = stackalloc char[Base58Encoding.MaxChars(16)];
-        for (int i = 0; i < 16; i++)
+        var chars = (Span<char>)stackalloc char[Base58Encoding.MaxChars(16)];
+        for (var i = 0; i < 16; i++)
         {
             var guid = i == 0 ? Guid.Empty : Guid.NewGuid();
-            int written = Base58Encoding.EncodeGuid(guid, chars);
-
-            //Console.WriteLine("{0:N} ({1})", guid, 32);
-            //Console.WriteLine("{0} ({1})", chars[..written].ToString(), written);
-            //Console.WriteLine();
-
+            var written = Base58Encoding.EncodeGuid(guid, chars);
             var decoded = Base58Encoding.DecodeGuid(chars[..written]);
-            Assert.AreEqual(guid, decoded);
+            Assert.That(decoded, Is.EqualTo(guid));
         }
     }
 
     [Test]
     public void GuidEncodeTryDecode()
     {
-        Span<char> chars = stackalloc char[Base58Encoding.MaxChars(16)];
-        for (int i = 0; i < 16; i++)
+        var chars = (Span<char>)stackalloc char[Base58Encoding.MaxChars(16)];
+        for (var i = 0; i < 16; i++)
         {
             var guid = i == 0 ? Guid.Empty : Guid.NewGuid();
-            int written = Base58Encoding.EncodeGuid(guid, chars);
-
-            //Console.WriteLine("{0:N} ({1})", guid, 32);
-            //Console.WriteLine("{0} ({1})", chars[..written].ToString(), written);
-            //Console.WriteLine();
-
-            Assert.IsTrue(Base58Encoding.TryDecodeGuid(chars[..written], out var decoded));
-            Assert.AreEqual(guid, decoded);
+            var written = Base58Encoding.EncodeGuid(guid, chars);
+            Assert.That(Base58Encoding.TryDecodeGuid(chars[..written], out var decoded), Is.True);
+            Assert.That(decoded, Is.EqualTo(guid));
         }
     }
 }
