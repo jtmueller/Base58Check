@@ -677,8 +677,6 @@ public static class Base58Encoding
             ? result : Span<byte>.Empty;
     }
 
-#if NET6_0_OR_GREATER
-
     private static bool GetCheckSum(ReadOnlySpan<byte> data, Span<byte> destination)
     {
         Span<byte> hash = stackalloc byte[HashBytes * 2];
@@ -689,23 +687,5 @@ public static class Base58Encoding
             !SHA256.TryHashData(hash1[..written], hash2, out written)) return false;
         hash2[..ChecksumSize].CopyTo(destination);
         return true;
-
     }
-
-#else
-
-    private static bool GetCheckSum(ReadOnlySpan<byte> data, Span<byte> destination)
-    {
-        using var sha = SHA256.Create();
-        Span<byte> hash = stackalloc byte[HashBytes * 2];
-        var hash1 = hash[..HashBytes];
-        var hash2 = hash[HashBytes..];
-
-        if (!sha.TryComputeHash(data, hash1, out int written) ||
-            !sha.TryComputeHash(hash1[..written], hash2, out written)) return false;
-        hash2[..ChecksumSize].CopyTo(destination);
-        return true;
-    }
-
-#endif
 }
