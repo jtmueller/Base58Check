@@ -1,4 +1,7 @@
-﻿using System.Buffers;
+﻿#if !NET10_0_OR_GREATER
+using System;
+#endif
+using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -434,6 +437,7 @@ public static class Base58Encoding
         if (dataWithoutCheckSum.IsEmpty)
         {
             bytesWritten = 0;
+            destination[..bytesDecoded].Clear();
             return false;
         }
 
