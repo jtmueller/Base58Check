@@ -29,7 +29,7 @@ public readonly struct Base58Value
         {
             var encoded = _encoded;
             if (string.IsNullOrEmpty(encoded)) return false;
-            int maxBytes = Base58Encoding.MaxBytesWithChecksum(encoded.Length);
+            int maxBytes = Base58Encoding.MaxBytes(encoded.Length);
             byte[]? pooled = maxBytes > 100 ? ArrayPool<byte>.Shared.Rent(maxBytes) : null;
             try
             {
@@ -98,7 +98,8 @@ public readonly struct Base58Value
         {
             if (pooled is not null) ArrayPool<byte>.Shared.Return(pooled);
         }
-        return new(Encoding.UTF8.GetString(utf8));
+        // Base58 is pure ASCII — Latin1 decoding is equivalent and avoids UTF-8 state machine overhead
+        return new(Encoding.Latin1.GetString(utf8));
     }
 
     /// <summary>Attempts to parse an already-encoded Base58 char span.</summary>
@@ -135,7 +136,8 @@ public readonly struct Base58Value
         {
             if (pooled is not null) ArrayPool<byte>.Shared.Return(pooled);
         }
-        value = new(Encoding.UTF8.GetString(utf8));
+        // Base58 is pure ASCII — Latin1 decoding is equivalent and avoids UTF-8 state machine overhead
+        value = new(Encoding.Latin1.GetString(utf8));
         return true;
     }
 
