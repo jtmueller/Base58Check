@@ -155,6 +155,17 @@ public class EncodingTests
         Assert.False(Base58Encoding.TryDecodePlain(new byte[] { 0x41, 0xC3, 0xA4 }.AsSpan(), dest.AsSpan(), out _));
     }
 
+    [Theory]
+    [InlineData(new byte[] { 0x61, 0x62, 0x30 })] // "ab0"
+    [InlineData(new byte[] { 0x61, 0x62, 0x4F })] // "abO"
+    [InlineData(new byte[] { 0x61, 0x62, 0x49 })] // "abI"
+    [InlineData(new byte[] { 0x61, 0x62, 0x6C })] // "abl"
+    public void TryDecodePlain_Utf8ByteSpan_InvalidBase58Ascii_ReturnsFalse(byte[] input)
+    {
+        var dest = new byte[10];
+        Assert.False(Base58Encoding.TryDecodePlain(input.AsSpan(), dest.AsSpan(), out _));
+    }
+
     // ── Edge cases ────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -223,7 +234,7 @@ public class EncodingTests
     public void TryDecodeWithChecksum_CharSpan_ValidAddress_ReturnsTrueAndExpected()
     {
         var dest = new byte[Base58Encoding.MaxBytesWithChecksum(AddressText.Length)];
-        bool ok = Base58Encoding.TryDecodeWithChecksum(AddressText.AsSpan(), dest.AsSpan(), out int written);
+        var ok = Base58Encoding.TryDecodeWithChecksum(AddressText.AsSpan(), dest.AsSpan(), out int written);
         Assert.True(ok);
         Assert.Equal(AddressBytes, dest[..written]);
     }
@@ -240,7 +251,7 @@ public class EncodingTests
     {
         var utf8 = Encoding.UTF8.GetBytes(AddressText);
         var dest = new byte[Base58Encoding.MaxBytesWithChecksum(AddressText.Length)];
-        int written = Base58Encoding.DecodeWithChecksum(utf8.AsSpan(), dest.AsSpan());
+        var written = Base58Encoding.DecodeWithChecksum(utf8.AsSpan(), dest.AsSpan());
         Assert.Equal(AddressBytes, dest[..written]);
     }
 
@@ -305,6 +316,14 @@ public class EncodingTests
         int written = Base58Encoding.EncodeGuid(guid, dest.AsSpan());
         Assert.True(Base58Encoding.TryDecodeGuid(dest.AsSpan(0, written), out var decoded));
         Assert.Equal(guid, decoded);
+    }
+
+    [Fact]
+    public void EncodeGuid_MaxValueGuid_RoundTrips()
+    {
+        var guid = new Guid(new byte[16] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
+        string encoded = Base58Encoding.EncodeGuid(guid);
+        Assert.Equal(guid, Base58Encoding.DecodeGuid(encoded.AsSpan()));
     }
 
     // ── Obsolete overload regression ──────────────────────────────────────────────
