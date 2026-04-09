@@ -26,7 +26,7 @@ public class Base58ValueTests
     public void Encode_Length_MatchesToStringLength()
     {
         var v = Base58Value.Encode(SampleBytes);
-        Assert.Equal(v.ToString().Length, v.Length);
+        Assert.Equal(v.Length, v.ToString().Length);
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public class Base58ValueTests
         Assert.Equal(0, v.Length);
     }
 
-    // ── Factory: EncodeWithChecksum ────────────────────────────────────────────
+    // ── HasValidChecksum ──────────────────────────────────────────────────────────
 
     [Fact]
     public void EncodeWithChecksum_ToString_MatchesEncodingMethod()
