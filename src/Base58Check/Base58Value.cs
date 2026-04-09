@@ -1,3 +1,4 @@
+using System;
 using System.Buffers;
 using System.Text;
 
@@ -207,9 +208,7 @@ public readonly struct Base58Value
     public int CompareTo(Base58Value other)
         => string.Compare(_encoded, other._encoded, StringComparison.Ordinal);
 
-    /// <inheritdoc/>
     public static bool operator ==(Base58Value left, Base58Value right) => left.Equals(right);
 
-    /// <inheritdoc/>
     public static bool operator !=(Base58Value left, Base58Value right) => !left.Equals(right);
 }
