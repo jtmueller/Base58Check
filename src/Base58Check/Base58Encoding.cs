@@ -336,16 +336,12 @@ public static class Base58Encoding
     /// </summary>
     /// <param name="chars">Data to be decoded</param>
     /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
+    [Obsolete("Use the Span<byte> destination overload instead: DecodeWithChecksum(ReadOnlySpan<char>, Span<byte>).", DiagnosticId = "B58_001")]
     public static ReadOnlySpan<byte> DecodeWithChecksum(ReadOnlySpan<char> chars)
     {
-#pragma warning disable B58_001
-        var dataWithCheckSum = DecodePlain(chars);
-#pragma warning restore B58_001
-        var dataWithoutCheckSum = VerifyAndRemoveCheckSum(dataWithCheckSum);
-
-        return dataWithoutCheckSum.IsEmpty
-            ? throw new FormatException("Base58 checksum is invalid.")
-            : dataWithoutCheckSum;
+        var dest = new byte[MaxBytes(chars.Length)];
+        int written = DecodeWithChecksum(chars, dest.AsSpan());
+        return dest.AsSpan(0, written);
     }
 
     /// <summary>
@@ -354,25 +350,16 @@ public static class Base58Encoding
     /// <param name="chars">Data to be decoded</param>
     /// <param name="data">Decoded data if valid, <see cref="ReadOnlySpan{byte}.Empty" /> if invalid.</param>
     /// <returns>Returns <c>true</c> if valid, otherwise <c>false</c>.</returns>
+    [Obsolete("Use the Span<byte> destination overload instead: TryDecodeWithChecksum(ReadOnlySpan<char>, Span<byte>, out int).", DiagnosticId = "B58_001")]
     public static bool TryDecodeWithChecksum(ReadOnlySpan<char> chars, out ReadOnlySpan<byte> data)
     {
-#pragma warning disable B58_001
-        if (!TryDecodePlain(chars, out var dataWithCheckSum))
-        {
-#pragma warning restore B58_001
-            data = default;
-            return false;
-        }
-
-        var dataWithoutCheckSum = VerifyAndRemoveCheckSum(dataWithCheckSum);
-
-        if (dataWithoutCheckSum.IsEmpty)
+        var dest = new byte[MaxBytes(chars.Length)];
+        if (!TryDecodeWithChecksum(chars, dest.AsSpan(), out int written))
         {
             data = default;
             return false;
         }
-
-        data = dataWithoutCheckSum;
+        data = dest.AsSpan(0, written);
         return true;
     }
 
