@@ -18,6 +18,7 @@ public class Base58Benchmarks
     private static readonly string EncodedChecksum25;
     private static readonly string EncodedChecksum100;
     private static readonly Guid   SampleGuid = Guid.NewGuid();
+    private static readonly string EncodedGuid;
 
     // Reusable destination buffers (benchmarks must not allocate for output)
     private static readonly byte[] ByteDest = new byte[256];
@@ -35,6 +36,7 @@ public class Base58Benchmarks
         EncodedChecksum16  = Base58Encoding.EncodeWithChecksum(Input16);
         EncodedChecksum25  = Base58Encoding.EncodeWithChecksum(Input25);
         EncodedChecksum100 = Base58Encoding.EncodeWithChecksum(Input100);
+        EncodedGuid        = Base58Encoding.EncodeGuid(SampleGuid);
     }
 
     // ── EncodePlain ───────────────────────────────────────────────────────────────
@@ -65,7 +67,7 @@ public class Base58Benchmarks
 
     [Benchmark] public string EncodeGuid_String()   => Base58Encoding.EncodeGuid(SampleGuid);
     [Benchmark] public int    EncodeGuid_CharSpan() => Base58Encoding.EncodeGuid(SampleGuid, CharDest);
-    [Benchmark] public Guid   DecodeGuid()          => Base58Encoding.DecodeGuid(Base58Encoding.EncodeGuid(SampleGuid).AsSpan());
+    [Benchmark] public Guid   DecodeGuid()          => Base58Encoding.DecodeGuid(EncodedGuid.AsSpan());
 
     // ── Base58Value ───────────────────────────────────────────────────────────────
 
