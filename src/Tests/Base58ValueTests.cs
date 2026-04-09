@@ -6,10 +6,14 @@ namespace Tests;
 
 public class Base58ValueTests
 {
-    private static readonly byte[] SampleBytes = "simply a long string"u8.ToArray();
+    private static ReadOnlySpan<byte> SampleBytes => "simply a long string"u8;
     private const string SampleEncoded = "2cFupjhnEsSn59qHXstmK2ffpLv2";
 
-    private static readonly byte[] AddressBytes = [0x00,0x01,0x09,0x66,0x77,0x60,0x06,0x95,0x3D,0x55,0x67,0x43,0x9E,0x5E,0x39,0xF8,0x6A,0x0D,0x27,0x3B,0xEE];
+    private static ReadOnlySpan<byte> AddressBytes =>
+    [
+        0x00, 0x01, 0x09, 0x66, 0x77, 0x60, 0x06, 0x95, 0x3D, 0x55, 0x67, 0x43, 0x9E, 0x5E, 0x39, 0xF8, 0x6A, 0x0D,
+        0x27, 0x3B, 0xEE
+    ];
     private const string AddressText = "16UwLL9Risc3QfPqBUvKofHmBQ7wMtjvM";
 
     // ── Factory: Encode ───────────────────────────────────────────────────────────
@@ -114,6 +118,20 @@ public class Base58ValueTests
         Assert.Equal(default, value);
     }
 
+    // ── Round-trip ────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Encode_TryFormat_TryParse_Decode_RoundTrip()
+    {
+        var value = Base58Value.Encode(SampleBytes);
+        var charBuf = new char[value.Length];
+        Assert.True(value.TryFormat(charBuf.AsSpan(), out int written, default, null));
+        Assert.True(Base58Value.TryParse(charBuf.AsSpan(0, written), out var parsed));
+        var dest = new byte[Base58Encoding.MaxBytes(parsed.Length)];
+        int bytesWritten = parsed.Decode(dest.AsSpan());
+        Assert.Equal(SampleBytes, dest[..bytesWritten]);
+    }
+
     // ── TryFormat ─────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -145,7 +163,7 @@ public class Base58ValueTests
         bool ok = value.TryFormat(dest.AsSpan(), out int written, default, null);
         Assert.True(ok);
         Assert.Equal(value.Length, written);
-        Assert.Equal(SampleEncoded, Encoding.UTF8.GetString(dest));
+        Assert.Equal(Base58Encoding.EncodePlain(SampleBytes), Encoding.UTF8.GetString(dest));
     }
 
     [Fact]
