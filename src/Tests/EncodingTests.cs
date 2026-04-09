@@ -21,7 +21,7 @@ public class EncodingTests
         ("3EFU7m", [0x57,0x2e,0x47,0x94]),
         ("EJDM8drfXA6uyA", [0xec,0xac,0x89,0xca,0xd9,0x39,0x23,0xc0,0x23,0x21]),
         ("Rt5zm", [0x10,0xc8,0x51,0x1e]),
-        ("1111111111", [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]),
+        ("1111111111", "\0\0\0\0\0\0\0\0\0\0"u8.ToArray()),
     ];
 
     private static readonly byte[] AddressBytes = [0x00,0x01,0x09,0x66,0x77,0x60,0x06,0x95,0x3D,0x55,0x67,0x43,0x9E,0x5E,0x39,0xF8,0x6A,0x0D,0x27,0x3B,0xEE];
@@ -145,14 +145,14 @@ public class EncodingTests
         {
             // 0xC3, 0xA4 are the UTF-8 encoding of 'ä' — both > 127, invalid in Base58
             var dest = new byte[10];
-            Base58Encoding.DecodePlain(new byte[] { 0x41, 0xC3, 0xA4 }.AsSpan(), dest.AsSpan());
+            Base58Encoding.DecodePlain("Aä"u8[..], dest.AsSpan());
         });
 
     [Fact]
     public void TryDecodePlain_NonAsciiBytes_ReturnsFalse()
     {
         var dest = new byte[10];
-        Assert.False(Base58Encoding.TryDecodePlain(new byte[] { 0x41, 0xC3, 0xA4 }.AsSpan(), dest.AsSpan(), out _));
+        Assert.False(Base58Encoding.TryDecodePlain("Aä"u8[..], dest.AsSpan(), out _));
     }
 
     [Theory]
@@ -218,7 +218,7 @@ public class EncodingTests
     public void DecodeWithChecksum_CharSpan_ReturnsExpected()
     {
         var dest = new byte[Base58Encoding.MaxBytesWithChecksum(AddressText.Length)];
-        int written = Base58Encoding.DecodeWithChecksum(AddressText.AsSpan(), dest.AsSpan());
+        var written = Base58Encoding.DecodeWithChecksum(AddressText.AsSpan(), dest.AsSpan());
         Assert.Equal(AddressBytes, dest[..written]);
     }
 
@@ -260,7 +260,7 @@ public class EncodingTests
     {
         var utf8 = Encoding.UTF8.GetBytes(AddressText);
         var dest = new byte[Base58Encoding.MaxBytesWithChecksum(AddressText.Length)];
-        bool ok = Base58Encoding.TryDecodeWithChecksum(utf8.AsSpan(), dest.AsSpan(), out int written);
+        var ok = Base58Encoding.TryDecodeWithChecksum(utf8.AsSpan(), dest.AsSpan(), out int written);
         Assert.True(ok);
         Assert.Equal(AddressBytes, dest[..written]);
     }
@@ -279,7 +279,7 @@ public class EncodingTests
     public void EncodeGuid_String_DecodesBack()
     {
         var guid = Guid.NewGuid();
-        string encoded = Base58Encoding.EncodeGuid(guid);
+        var encoded = Base58Encoding.EncodeGuid(guid);
         Assert.Equal(guid, Base58Encoding.DecodeGuid(encoded.AsSpan()));
     }
 
@@ -287,7 +287,7 @@ public class EncodingTests
     public void EncodeGuid_CharSpan_DecodeGuid_RoundTrips()
     {
         var chars = new char[Base58Encoding.MaxChars(16)];
-        for (int i = 0; i < 16; i++)
+        for (var i = 0; i < 16; i++)
         {
             var guid = i == 0 ? Guid.Empty : Guid.NewGuid();
             int written = Base58Encoding.EncodeGuid(guid, chars.AsSpan());
@@ -299,10 +299,10 @@ public class EncodingTests
     public void EncodeGuid_CharSpan_TryDecodeGuid_RoundTrips()
     {
         var chars = new char[Base58Encoding.MaxChars(16)];
-        for (int i = 0; i < 16; i++)
+        for (var i = 0; i < 16; i++)
         {
             var guid = i == 0 ? Guid.Empty : Guid.NewGuid();
-            int written = Base58Encoding.EncodeGuid(guid, chars.AsSpan());
+            var written = Base58Encoding.EncodeGuid(guid, chars.AsSpan());
             Assert.True(Base58Encoding.TryDecodeGuid(chars.AsSpan(0, written), out var decoded));
             Assert.Equal(guid, decoded);
         }
@@ -313,7 +313,7 @@ public class EncodingTests
     {
         var guid = Guid.NewGuid();
         var dest = new byte[Base58Encoding.MaxChars(16)];
-        int written = Base58Encoding.EncodeGuid(guid, dest.AsSpan());
+        var written = Base58Encoding.EncodeGuid(guid, dest.AsSpan());
         Assert.True(Base58Encoding.TryDecodeGuid(dest.AsSpan(0, written), out var decoded));
         Assert.Equal(guid, decoded);
     }
@@ -321,8 +321,8 @@ public class EncodingTests
     [Fact]
     public void EncodeGuid_MaxValueGuid_RoundTrips()
     {
-        var guid = new Guid(new byte[16] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
-        string encoded = Base58Encoding.EncodeGuid(guid);
+        var guid = new Guid(new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
+        var encoded = Base58Encoding.EncodeGuid(guid);
         Assert.Equal(guid, Base58Encoding.DecodeGuid(encoded.AsSpan()));
     }
 
@@ -336,7 +336,7 @@ public class EncodingTests
     [Fact]
     public void TryDecodePlain_ObsoleteByteArray_ReturnsTrueAndCorrectBytes()
     {
-        bool ok = Base58Encoding.TryDecodePlain("2g".AsSpan(), out byte[] result);
+        var ok = Base58Encoding.TryDecodePlain("2g".AsSpan(), out byte[] result);
         Assert.True(ok);
         Assert.Equal("a"u8.ToArray(), result);
     }
