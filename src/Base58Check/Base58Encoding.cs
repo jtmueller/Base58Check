@@ -46,8 +46,8 @@ public static class Base58Encoding
     /// <returns></returns>
     public static string EncodeWithChecksum(ReadOnlySpan<byte> data)
     {
-        int size = MaxCharsWithChecksum(data.Length);
-        byte[]? pooled = size > 100 ? ArrayPool<byte>.Shared.Rent(size) : null;
+        var size = MaxCharsWithChecksum(data.Length);
+        var pooled = size > 100 ? ArrayPool<byte>.Shared.Rent(size) : null;
         try
         {
             var result = pooled ?? stackalloc byte[size];
@@ -74,8 +74,8 @@ public static class Base58Encoding
         var pooled = size > 100 ? ArrayPool<byte>.Shared.Rent(size) : null;
         try
         {
-            Span<byte> dataWithChecksum = pooled ?? stackalloc byte[size];
-            int written = AddCheckSum(data, dataWithChecksum);
+            var dataWithChecksum = pooled ?? stackalloc byte[size];
+            var written = AddCheckSum(data, dataWithChecksum);
             return EncodePlain(dataWithChecksum[..written], destination);
         }
         finally
@@ -150,23 +150,23 @@ public static class Base58Encoding
             return 0;
 
         // Count leading zero bytes — each maps to a '1' character
-        int leadingZeros = 0;
+        var leadingZeros = 0;
         while (leadingZeros < data.Length && data[leadingZeros] == 0)
             leadingZeros++;
 
         // Working buffer: base-58 digits stored least-significant-first
-        int maxLen = MaxChars(data.Length);
-        byte[]? pooled = maxLen > 100 ? ArrayPool<byte>.Shared.Rent(maxLen) : null;
+        var maxLen = MaxChars(data.Length);
+        var pooled = maxLen > 100 ? ArrayPool<byte>.Shared.Rent(maxLen) : null;
         try
         {
-            Span<byte> digits = pooled is not null ? pooled.AsSpan(0, maxLen) : stackalloc byte[maxLen];
+            var digits = pooled is not null ? pooled.AsSpan(0, maxLen) : stackalloc byte[maxLen];
             digits.Clear();
-            int digitsLen = 0;
+            var digitsLen = 0;
 
-            foreach (byte b in data)
+            foreach (var b in data)
             {
                 int carry = b;
-                for (int i = 0; i < digitsLen; i++)
+                for (var i = 0; i < digitsLen; i++)
                 {
                     carry += digits[i] * 256;
                     digits[i] = (byte)(carry % 58);
@@ -181,12 +181,12 @@ public static class Base58Encoding
 
             var alphabet = DigitsByte;
             const byte one = (byte)'1';
-            int pos = 0;
+            var pos = 0;
 
-            for (int i = 0; i < leadingZeros; i++)
+            for (var i = 0; i < leadingZeros; i++)
                 destination[pos++] = one;
 
-            for (int i = digitsLen - 1; i >= 0; i--)
+            for (var i = digitsLen - 1; i >= 0; i--)
                 destination[pos++] = alphabet[digits[i]];
 
             return pos;
@@ -317,7 +317,9 @@ public static class Base58Encoding
     /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
     public static ReadOnlySpan<byte> DecodeWithChecksum(ReadOnlySpan<char> chars)
     {
+#pragma warning disable B58_001
         var dataWithCheckSum = DecodePlain(chars);
+#pragma warning restore B58_001
         var dataWithoutCheckSum = VerifyAndRemoveCheckSum(dataWithCheckSum);
 
         return dataWithoutCheckSum.IsEmpty
@@ -333,8 +335,10 @@ public static class Base58Encoding
     /// <returns>Returns <c>true</c> if valid, otherwise <c>false</c>.</returns>
     public static bool TryDecodeWithChecksum(ReadOnlySpan<char> chars, out ReadOnlySpan<byte> data)
     {
+#pragma warning disable B58_001
         if (!TryDecodePlain(chars, out var dataWithCheckSum))
         {
+#pragma warning restore B58_001
             data = default;
             return false;
         }
@@ -442,17 +446,18 @@ public static class Base58Encoding
     /// </summary>
     /// <param name="data">Data to be decoded</param>
     /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
+    [Obsolete("Use the Span<byte> destination overload instead: DecodePlain(ReadOnlySpan<char>, Span<byte>).", DiagnosticId = "B58_001")]
     public static byte[] DecodePlain(ReadOnlySpan<char> data)
     {
         if (data.IsEmpty)
             return [];
 
-        int maxBytes = MaxBytes(data.Length);
-        byte[]? pooled = maxBytes > 100 ? ArrayPool<byte>.Shared.Rent(maxBytes) : null;
+        var maxBytes = MaxBytes(data.Length);
+        var pooled = maxBytes > 100 ? ArrayPool<byte>.Shared.Rent(maxBytes) : null;
         try
         {
-            Span<byte> buf = pooled is not null ? pooled.AsSpan(0, maxBytes) : stackalloc byte[maxBytes];
-            int written = DecodePlain(data, buf);
+            var buf = pooled is not null ? pooled.AsSpan(0, maxBytes) : stackalloc byte[maxBytes];
+            var written = DecodePlain(data, buf);
             return buf[..written].ToArray();
         }
         finally
@@ -468,47 +473,33 @@ public static class Base58Encoding
     /// <param name="data">Data to be decoded</param>
     /// <param name="result">The decoded data if valid</param>
     /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
+    [Obsolete("Use the Span<byte> destination overload instead: TryDecodePlain(ReadOnlySpan<char>, Span<byte>, out int).", DiagnosticId = "B58_001")]
     public static bool TryDecodePlain(ReadOnlySpan<char> data, out byte[] result)
     {
         if (data.IsEmpty)
         {
-            result = Array.Empty<byte>();
+            result = [];
             return true;
         }
 
-        BigInteger fiftyEight = 58;
-
-        // Decode Base58 string to BigInteger 
-        var digits = DigitsByte;
-        BigInteger intData = 0;
-        foreach (var t in data)
+        var maxBytes = MaxBytes(data.Length);
+        var pooled = maxBytes > 100 ? ArrayPool<byte>.Shared.Rent(maxBytes) : null;
+        try
         {
-            var digit = digits.IndexOf((byte)t);
-
-            if (digit < 0)
+            var buf = pooled is not null ? pooled.AsSpan(0, maxBytes) : stackalloc byte[maxBytes];
+            if (!TryDecodePlain(data, buf, out int written))
             {
-                result = Array.Empty<byte>();
+                result = [];
                 return false;
             }
-
-            intData = intData * fiftyEight + digit;
-        }
-
-        // Encode BigInteger to byte[]
-        // Leading zero bytes get encoded as leading `1` characters
-        var leadingZeroCount = 0;
-        for (; leadingZeroCount < data.Length && data[leadingZeroCount] == '1'; leadingZeroCount++) ;
-
-        if (intData.IsZero)
-        {
-            result = leadingZeroCount == 0 ? Array.Empty<byte>() : new byte[leadingZeroCount];
+            result = buf[..written].ToArray();
             return true;
         }
-
-        int byteCount = intData.GetByteCount(isUnsigned: true);
-        result = new byte[leadingZeroCount + byteCount];
-
-        return intData.TryWriteBytes(result.AsSpan(leadingZeroCount..), out var _, isUnsigned: true, isBigEndian: true);
+        finally
+        {
+            if (pooled is not null)
+                ArrayPool<byte>.Shared.Return(pooled);
+        }
     }
 
     /// <summary>
@@ -572,28 +563,28 @@ public static class Base58Encoding
         if (data.IsEmpty)
             return 0;
 
-        int badIndex = data.IndexOfAnyExcept(ValidBase58Bytes);
+        var badIndex = data.IndexOfAnyExcept(ValidBase58Bytes);
         if (badIndex >= 0)
             throw new FormatException($"Invalid Base58 character '{(char)data[badIndex]}' at position {badIndex}.");
 
         const byte one = (byte)'1';
-        int leadingZeros = 0;
+        var leadingZeros = 0;
         while (leadingZeros < data.Length && data[leadingZeros] == one)
             leadingZeros++;
 
-        int maxLen = MaxBytes(data.Length);
-        byte[]? pooled = maxLen > 100 ? ArrayPool<byte>.Shared.Rent(maxLen) : null;
+        var maxLen = MaxBytes(data.Length);
+        var pooled = maxLen > 100 ? ArrayPool<byte>.Shared.Rent(maxLen) : null;
         try
         {
-            Span<byte> bytes = pooled is not null ? pooled.AsSpan(0, maxLen) : stackalloc byte[maxLen];
+            var bytes = pooled is not null ? pooled.AsSpan(0, maxLen) : stackalloc byte[maxLen];
             bytes.Clear();
-            int bytesLen = 0;
+            var bytesLen = 0;
 
             var table = DecodeTable;
-            foreach (byte b in data)
+            foreach (var b in data)
             {
                 int carry = table[b];
-                for (int i = 0; i < bytesLen; i++)
+                for (var i = 0; i < bytesLen; i++)
                 {
                     carry += bytes[i] * 58;
                     bytes[i] = (byte)(carry & 0xFF);
@@ -607,8 +598,8 @@ public static class Base58Encoding
             }
 
             destination[..leadingZeros].Clear();
-            int pos = leadingZeros;
-            for (int i = bytesLen - 1; i >= 0; i--)
+            var pos = leadingZeros;
+            for (var i = bytesLen - 1; i >= 0; i--)
                 destination[pos++] = bytes[i];
 
             return pos;
@@ -643,23 +634,23 @@ public static class Base58Encoding
         }
 
         const byte one = (byte)'1';
-        int leadingZeros = 0;
+        var leadingZeros = 0;
         while (leadingZeros < data.Length && data[leadingZeros] == one)
             leadingZeros++;
 
-        int maxLen = MaxBytes(data.Length);
-        byte[]? pooled = maxLen > 100 ? ArrayPool<byte>.Shared.Rent(maxLen) : null;
+        var maxLen = MaxBytes(data.Length);
+        var pooled = maxLen > 100 ? ArrayPool<byte>.Shared.Rent(maxLen) : null;
         try
         {
-            Span<byte> bytes = pooled is not null ? pooled.AsSpan(0, maxLen) : stackalloc byte[maxLen];
+            var bytes = pooled is not null ? pooled.AsSpan(0, maxLen) : stackalloc byte[maxLen];
             bytes.Clear();
-            int bytesLen = 0;
+            var bytesLen = 0;
 
             var table = DecodeTable;
-            foreach (byte b in data)
+            foreach (var b in data)
             {
                 int carry = table[b];
-                for (int i = 0; i < bytesLen; i++)
+                for (var i = 0; i < bytesLen; i++)
                 {
                     carry += bytes[i] * 58;
                     bytes[i] = (byte)(carry & 0xFF);
@@ -673,8 +664,8 @@ public static class Base58Encoding
             }
 
             destination[..leadingZeros].Clear();
-            int pos = leadingZeros;
-            for (int i = bytesLen - 1; i >= 0; i--)
+            var pos = leadingZeros;
+            for (var i = bytesLen - 1; i >= 0; i--)
                 destination[pos++] = bytes[i];
 
             bytesWritten = pos;
@@ -713,7 +704,7 @@ public static class Base58Encoding
         var hash1 = hash[..HashBytes];
         var hash2 = hash[HashBytes..];
 
-        if (!SHA256.TryHashData(data, hash1, out int written) ||
+        if (!SHA256.TryHashData(data, hash1, out var written) ||
             !SHA256.TryHashData(hash1[..written], hash2, out written)) return false;
         hash2[..ChecksumSize].CopyTo(destination);
         return true;
