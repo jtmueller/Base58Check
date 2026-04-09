@@ -1,131 +1,325 @@
-﻿using Base58Check;
-using NUnit.Framework;
-using System.Collections;
+using Base58Check;
+using System.Text;
+using Xunit;
 
 namespace Tests;
 
 public class EncodingTests
 {
-    // Test cases from https://github.com/bitcoin/bitcoin/blob/master/src/test/base58_tests.cpp
-    private static readonly (string text, byte[] bytes)[] TestCases = {
-        (string.Empty, Array.Empty<byte>()),
-        ("1112", new byte[]{0x00, 0x00, 0x00, 0x01}),
+    // Test vectors from https://github.com/bitcoin/bitcoin/blob/master/src/test/base58_tests.cpp
+    private static readonly (string text, byte[] bytes)[] TestCases =
+    [
+        (string.Empty, []),
+        ("1112", [0x00, 0x00, 0x00, 0x01]),
         ("2g", "a"u8.ToArray()),
         ("a3gV", "bbb"u8.ToArray()),
         ("aPEr", "ccc"u8.ToArray()),
         ("2cFupjhnEsSn59qHXstmK2ffpLv2", "simply a long string"u8.ToArray()),
-        ("1NS17iag9jJgTHD1VXjvLCEnZuQ3rJDE9L",
-            new byte[]
-            {
-                0x00, 0xeb, 0x15, 0x23, 0x1d, 0xfc, 0xeb, 0x60, 0x92, 0x58, 0x86, 0xb6, 0x7d, 0x06, 0x52, 0x99, 0x92,
-                0x59, 0x15, 0xae, 0xb1, 0x72, 0xc0, 0x66, 0x47
-            }),
-        ("ABnLTmg", new byte[]{0x51,0x6b,0x6f,0xcd,0x0f}),
-        ("3SEo3LWLoPntC", new byte[]{0xbf,0x4f,0x89,0x00,0x1e,0x67,0x02,0x74,0xdd}),
-        ("3EFU7m", new byte[]{0x57,0x2e,0x47,0x94}),
-        ("EJDM8drfXA6uyA", new byte[]{0xec,0xac,0x89,0xca,0xd9,0x39,0x23,0xc0,0x23,0x21}),
-        ("Rt5zm", new byte[]{0x10,0xc8,0x51,0x1e}),
-        ("1111111111", "\0\0\0\0\0\0\0\0\0\0"u8.ToArray())
-    };
+        ("1NS17iag9jJgTHD1VXjvLCEnZuQ3rJDE9L", [0x00,0xeb,0x15,0x23,0x1d,0xfc,0xeb,0x60,0x92,0x58,0x86,0xb6,0x7d,0x06,0x52,0x99,0x92,0x59,0x15,0xae,0xb1,0x72,0xc0,0x66,0x47]),
+        ("ABnLTmg", [0x51,0x6b,0x6f,0xcd,0x0f]),
+        ("3SEo3LWLoPntC", [0xbf,0x4f,0x89,0x00,0x1e,0x67,0x02,0x74,0xdd]),
+        ("3EFU7m", [0x57,0x2e,0x47,0x94]),
+        ("EJDM8drfXA6uyA", [0xec,0xac,0x89,0xca,0xd9,0x39,0x23,0xc0,0x23,0x21]),
+        ("Rt5zm", [0x10,0xc8,0x51,0x1e]),
+        ("1111111111", [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]),
+    ];
 
-    // Example address from https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
-    private static readonly byte[] AddressBytes =
-    {
-        0x00, 0x01, 0x09, 0x66, 0x77, 0x60, 0x06, 0x95, 0x3D, 0x55, 0x67, 0x43, 0x9E, 0x5E, 0x39, 0xF8, 0x6A, 0x0D,
-        0x27, 0x3B, 0xEE
-    };
-    private const string AddressText = "16UwLL9Risc3QfPqBUvKofHmBQ7wMtjvM";
+    private static readonly byte[] AddressBytes = [0x00,0x01,0x09,0x66,0x77,0x60,0x06,0x95,0x3D,0x55,0x67,0x43,0x9E,0x5E,0x39,0xF8,0x6A,0x0D,0x27,0x3B,0xEE];
+    private const string AddressText    = "16UwLL9Risc3QfPqBUvKofHmBQ7wMtjvM";
     private const string BrokenAddressText = "16UwLl9Risc3QfPqBUvKofHmBQ7wMtjvM";
 
-    public static IEnumerable EncodeTestCases
+    // ── Theory data ──────────────────────────────────────────────────────────────
+
+    public static TheoryData<byte[], string> EncodeTestCases()
     {
-        get
+        var data = new TheoryData<byte[], string>();
+        foreach (var (text, bytes) in TestCases)
+            data.Add(bytes, text);
+        return data;
+    }
+
+    public static TheoryData<string, byte[]> DecodeTestCases()
+    {
+        var data = new TheoryData<string, byte[]>();
+        foreach (var (text, bytes) in TestCases)
+            data.Add(text, bytes);
+        return data;
+    }
+
+    // ── EncodePlain ───────────────────────────────────────────────────────────────
+
+    [Theory, MemberData(nameof(EncodeTestCases))]
+    public void EncodePlain_String_ReturnsExpected(byte[] bytes, string expected)
+        => Assert.Equal(expected, Base58Encoding.EncodePlain(bytes));
+
+    [Theory, MemberData(nameof(EncodeTestCases))]
+    public void EncodePlain_ToByteSpan_WritesExpectedUtf8(byte[] bytes, string expected)
+    {
+        var dest = new byte[Base58Encoding.MaxChars(bytes.Length)];
+        int written = Base58Encoding.EncodePlain(bytes, dest.AsSpan());
+        Assert.Equal(expected, Encoding.UTF8.GetString(dest, 0, written));
+    }
+
+    [Theory, MemberData(nameof(EncodeTestCases))]
+    public void EncodePlain_ToCharSpan_WritesExpected(byte[] bytes, string expected)
+    {
+        var dest = new char[Base58Encoding.MaxChars(bytes.Length)];
+        int written = Base58Encoding.EncodePlain(bytes, dest.AsSpan());
+        Assert.Equal(expected, new string(dest, 0, written));
+    }
+
+    // ── DecodePlain ───────────────────────────────────────────────────────────────
+
+    [Theory, MemberData(nameof(DecodeTestCases))]
+    public void DecodePlain_CharSpan_WritesExpected(string text, byte[] expected)
+    {
+        var dest = new byte[Base58Encoding.MaxBytes(text.Length)];
+        int written = Base58Encoding.DecodePlain(text.AsSpan(), dest.AsSpan());
+        Assert.Equal(expected, dest[..written]);
+    }
+
+    [Theory, MemberData(nameof(DecodeTestCases))]
+    public void DecodePlain_Utf8ByteSpan_WritesExpected(string text, byte[] expected)
+    {
+        var utf8 = Encoding.UTF8.GetBytes(text);
+        var dest = new byte[Base58Encoding.MaxBytes(utf8.Length)];
+        int written = Base58Encoding.DecodePlain(utf8.AsSpan(), dest.AsSpan());
+        Assert.Equal(expected, dest[..written]);
+    }
+
+    [Theory, MemberData(nameof(DecodeTestCases))]
+    public void TryDecodePlain_CharSpan_ReturnsTrueAndWritesExpected(string text, byte[] expected)
+    {
+        var dest = new byte[Base58Encoding.MaxBytes(text.Length)];
+        bool ok = Base58Encoding.TryDecodePlain(text.AsSpan(), dest.AsSpan(), out int written);
+        Assert.True(ok);
+        Assert.Equal(expected, dest[..written]);
+    }
+
+    [Theory, MemberData(nameof(DecodeTestCases))]
+    public void TryDecodePlain_Utf8ByteSpan_ReturnsTrueAndWritesExpected(string text, byte[] expected)
+    {
+        var utf8 = Encoding.UTF8.GetBytes(text);
+        var dest = new byte[Base58Encoding.MaxBytes(utf8.Length)];
+        bool ok = Base58Encoding.TryDecodePlain(utf8.AsSpan(), dest.AsSpan(), out int written);
+        Assert.True(ok);
+        Assert.Equal(expected, dest[..written]);
+    }
+
+    // ── Invalid character handling ─────────────────────────────────────────────
+
+    [Fact]
+    public void DecodePlain_InvalidChar_ThrowsFormatException()
+        => Assert.Throws<FormatException>(() =>
         {
-            foreach (var (text, bytes) in TestCases)
-            {
-                yield return new TestCaseData(bytes).Returns(text);
-            }
-        }
-    }
+            var dest = new byte[10];
+            Base58Encoding.DecodePlain("ab0".AsSpan(), dest.AsSpan());
+        });
 
-    public static IEnumerable DecodeTestCases
-    {
-        get
+    [Theory]
+    [InlineData("ab0")]  // '0' not in Base58
+    [InlineData("abO")]  // 'O' not in Base58
+    [InlineData("abI")]  // 'I' not in Base58
+    [InlineData("abl")]  // 'l' not in Base58
+    public void DecodePlain_Base58InvalidAscii_ThrowsFormatException(string input)
+        => Assert.Throws<FormatException>(() =>
         {
-            foreach (var (text, bytes) in TestCases)
-            {
-                yield return new TestCaseData(text).Returns(bytes);
-            }
-        }
+            var dest = new byte[10];
+            Base58Encoding.DecodePlain(input.AsSpan(), dest.AsSpan());
+        });
+
+    [Theory]
+    [InlineData("ab0")]
+    [InlineData("abO")]
+    [InlineData("abI")]
+    [InlineData("abl")]
+    public void TryDecodePlain_InvalidInput_ReturnsFalse(string input)
+    {
+        var dest = new byte[10];
+        Assert.False(Base58Encoding.TryDecodePlain(input.AsSpan(), dest.AsSpan(), out _));
     }
 
-    [TestCaseSource(typeof(EncodingTests), nameof(EncodeTestCases))]
-    public string EncodePlain(byte[] bytes) => Base58Encoding.EncodePlain(bytes);
+    [Fact]
+    public void DecodePlain_NonAsciiBytes_ThrowsFormatException()
+        => Assert.Throws<FormatException>(() =>
+        {
+            // 0xC3, 0xA4 are the UTF-8 encoding of 'ä' — both > 127, invalid in Base58
+            var dest = new byte[10];
+            Base58Encoding.DecodePlain(new byte[] { 0x41, 0xC3, 0xA4 }.AsSpan(), dest.AsSpan());
+        });
 
-    [TestCaseSource(typeof(EncodingTests), nameof(DecodeTestCases))]
-    public byte[] DecodePlain(string text) => Base58Encoding.DecodePlain(text);
-
-    [Test]
-    public void DecodeInvalidChar()
+    [Fact]
+    public void TryDecodePlain_NonAsciiBytes_ReturnsFalse()
     {
-        Assert.That(() => Base58Encoding.DecodePlain("ab0"),
-            Throws.InstanceOf<FormatException>());
+        var dest = new byte[10];
+        Assert.False(Base58Encoding.TryDecodePlain(new byte[] { 0x41, 0xC3, 0xA4 }.AsSpan(), dest.AsSpan(), out _));
     }
 
-    [Test]
-    public void EncodeBitcoinAddress()
+    // ── Edge cases ────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void EncodePlain_EmptyInput_ReturnsEmptyString()
+        => Assert.Equal(string.Empty, Base58Encoding.EncodePlain(ReadOnlySpan<byte>.Empty));
+
+    [Fact]
+    public void DecodePlain_EmptyInput_WritesZeroBytes()
     {
-        var actualText = Base58Encoding.EncodeWithChecksum(AddressBytes);
-        Assert.That(actualText, Is.EqualTo(AddressText));
+        var dest = new byte[10];
+        int written = Base58Encoding.DecodePlain(ReadOnlySpan<char>.Empty, dest.AsSpan());
+        Assert.Equal(0, written);
     }
 
-    [Test]
-    public void DecodeBitcoinAddress()
+    [Fact]
+    public void EncodePlain_AllZeroBytes_ReturnsAllOnes()
+        => Assert.Equal("11111", Base58Encoding.EncodePlain(new byte[5]));
+
+    [Fact]
+    public void DecodePlain_AllOnes_ReturnsAllZeroBytes()
     {
-        var actualBytes = Base58Encoding.DecodeWithChecksum(AddressText).ToArray();
-        Assert.That(actualBytes, Is.EqualTo(AddressBytes));
+        var dest = new byte[Base58Encoding.MaxBytes(5)];
+        int written = Base58Encoding.DecodePlain("11111".AsSpan(), dest.AsSpan());
+        Assert.Equal(5, written);
+        Assert.All(dest[..written], b => Assert.Equal(0, b));
     }
 
-    [Test]
-    public void DecodeBrokenBitcoinAddress()
+    [Theory]
+    [InlineData(new byte[] { 0x00 }, "1")]
+    [InlineData(new byte[] { 0x01 }, "2")]
+    [InlineData(new byte[] { 0xFF }, "5Q")]
+    public void EncodePlain_SingleByte_ReturnsExpected(byte[] input, string expected)
+        => Assert.Equal(expected, Base58Encoding.EncodePlain(input));
+
+    // ── Bitcoin address (checksum) ─────────────────────────────────────────────
+
+    [Fact]
+    public void EncodeWithChecksum_BitcoinAddress_ReturnsExpected()
+        => Assert.Equal(AddressText, Base58Encoding.EncodeWithChecksum(AddressBytes));
+
+    [Fact]
+    public void EncodeWithChecksum_ToByteSpan_WritesExpectedUtf8()
     {
-        Assert.That(() => Base58Encoding.DecodeWithChecksum(BrokenAddressText),
-            Throws.InstanceOf<FormatException>());
+        var dest = new byte[Base58Encoding.MaxCharsWithChecksum(AddressBytes.Length)];
+        int written = Base58Encoding.EncodeWithChecksum(AddressBytes, dest.AsSpan());
+        Assert.Equal(AddressText, Encoding.UTF8.GetString(dest, 0, written));
     }
 
-    [Test]
-    public void TryDecodeBitcoinAddress()
+    [Fact]
+    public void DecodeWithChecksum_CharSpan_ReturnsExpected()
     {
-        Assert.That(Base58Encoding.TryDecodeWithChecksum(AddressText, out var actualBytes), Is.True);
-        Assert.That(actualBytes.ToArray(), Is.EqualTo(AddressBytes));
+        var dest = new byte[Base58Encoding.MaxBytesWithChecksum(AddressText.Length)];
+        int written = Base58Encoding.DecodeWithChecksum(AddressText.AsSpan(), dest.AsSpan());
+        Assert.Equal(AddressBytes, dest[..written]);
     }
 
-    [Test]
-    public void TryDecodeBrokenBitcoinAddress() => Assert.That(Base58Encoding.TryDecodeWithChecksum(BrokenAddressText, out var _), Is.False);
+    [Fact]
+    public void DecodeWithChecksum_BrokenAddress_ThrowsFormatException()
+        => Assert.Throws<FormatException>(() =>
+        {
+            var dest = new byte[Base58Encoding.MaxBytesWithChecksum(BrokenAddressText.Length)];
+            Base58Encoding.DecodeWithChecksum(BrokenAddressText.AsSpan(), dest.AsSpan());
+        });
 
-    [Test]
-    public void GuidEncodeDecode()
+    [Fact]
+    public void TryDecodeWithChecksum_CharSpan_ValidAddress_ReturnsTrueAndExpected()
     {
-        var chars = (Span<char>)stackalloc char[Base58Encoding.MaxChars(16)];
-        for (var i = 0; i < 16; i++)
+        var dest = new byte[Base58Encoding.MaxBytesWithChecksum(AddressText.Length)];
+        bool ok = Base58Encoding.TryDecodeWithChecksum(AddressText.AsSpan(), dest.AsSpan(), out int written);
+        Assert.True(ok);
+        Assert.Equal(AddressBytes, dest[..written]);
+    }
+
+    [Fact]
+    public void TryDecodeWithChecksum_CharSpan_BrokenAddress_ReturnsFalse()
+    {
+        var dest = new byte[Base58Encoding.MaxBytesWithChecksum(BrokenAddressText.Length)];
+        Assert.False(Base58Encoding.TryDecodeWithChecksum(BrokenAddressText.AsSpan(), dest.AsSpan(), out _));
+    }
+
+    [Fact]
+    public void DecodeWithChecksum_Utf8ByteSpan_ValidAddress_ReturnsExpected()
+    {
+        var utf8 = Encoding.UTF8.GetBytes(AddressText);
+        var dest = new byte[Base58Encoding.MaxBytesWithChecksum(AddressText.Length)];
+        int written = Base58Encoding.DecodeWithChecksum(utf8.AsSpan(), dest.AsSpan());
+        Assert.Equal(AddressBytes, dest[..written]);
+    }
+
+    [Fact]
+    public void TryDecodeWithChecksum_Utf8ByteSpan_ValidAddress_ReturnsTrueAndExpected()
+    {
+        var utf8 = Encoding.UTF8.GetBytes(AddressText);
+        var dest = new byte[Base58Encoding.MaxBytesWithChecksum(AddressText.Length)];
+        bool ok = Base58Encoding.TryDecodeWithChecksum(utf8.AsSpan(), dest.AsSpan(), out int written);
+        Assert.True(ok);
+        Assert.Equal(AddressBytes, dest[..written]);
+    }
+
+    [Fact]
+    public void TryDecodeWithChecksum_Utf8ByteSpan_BrokenAddress_ReturnsFalse()
+    {
+        var utf8 = Encoding.UTF8.GetBytes(BrokenAddressText);
+        var dest = new byte[Base58Encoding.MaxBytesWithChecksum(BrokenAddressText.Length)];
+        Assert.False(Base58Encoding.TryDecodeWithChecksum(utf8.AsSpan(), dest.AsSpan(), out _));
+    }
+
+    // ── Guid ──────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void EncodeGuid_String_DecodesBack()
+    {
+        var guid = Guid.NewGuid();
+        string encoded = Base58Encoding.EncodeGuid(guid);
+        Assert.Equal(guid, Base58Encoding.DecodeGuid(encoded.AsSpan()));
+    }
+
+    [Fact]
+    public void EncodeGuid_CharSpan_DecodeGuid_RoundTrips()
+    {
+        var chars = new char[Base58Encoding.MaxChars(16)];
+        for (int i = 0; i < 16; i++)
         {
             var guid = i == 0 ? Guid.Empty : Guid.NewGuid();
-            var written = Base58Encoding.EncodeGuid(guid, chars);
-            var decoded = Base58Encoding.DecodeGuid(chars[..written]);
-            Assert.That(decoded, Is.EqualTo(guid));
+            int written = Base58Encoding.EncodeGuid(guid, chars.AsSpan());
+            Assert.Equal(guid, Base58Encoding.DecodeGuid(chars.AsSpan(0, written)));
         }
     }
 
-    [Test]
-    public void GuidEncodeTryDecode()
+    [Fact]
+    public void EncodeGuid_CharSpan_TryDecodeGuid_RoundTrips()
     {
-        var chars = (Span<char>)stackalloc char[Base58Encoding.MaxChars(16)];
-        for (var i = 0; i < 16; i++)
+        var chars = new char[Base58Encoding.MaxChars(16)];
+        for (int i = 0; i < 16; i++)
         {
             var guid = i == 0 ? Guid.Empty : Guid.NewGuid();
-            var written = Base58Encoding.EncodeGuid(guid, chars);
-            Assert.That(Base58Encoding.TryDecodeGuid(chars[..written], out var decoded), Is.True);
-            Assert.That(decoded, Is.EqualTo(guid));
+            int written = Base58Encoding.EncodeGuid(guid, chars.AsSpan());
+            Assert.True(Base58Encoding.TryDecodeGuid(chars.AsSpan(0, written), out var decoded));
+            Assert.Equal(guid, decoded);
         }
     }
+
+    [Fact]
+    public void EncodeGuid_ByteSpan_DecodeGuid_RoundTrips()
+    {
+        var guid = Guid.NewGuid();
+        var dest = new byte[Base58Encoding.MaxChars(16)];
+        int written = Base58Encoding.EncodeGuid(guid, dest.AsSpan());
+        Assert.True(Base58Encoding.TryDecodeGuid(dest.AsSpan(0, written), out var decoded));
+        Assert.Equal(guid, decoded);
+    }
+
+    // ── Obsolete overload regression ──────────────────────────────────────────────
+
+#pragma warning disable B58_001
+    [Fact]
+    public void DecodePlain_ObsoleteByteArray_StillReturnsCorrectBytes()
+        => Assert.Equal("a"u8.ToArray(), Base58Encoding.DecodePlain("2g".AsSpan()));
+
+    [Fact]
+    public void TryDecodePlain_ObsoleteByteArray_ReturnsTrueAndCorrectBytes()
+    {
+        bool ok = Base58Encoding.TryDecodePlain("2g".AsSpan(), out byte[] result);
+        Assert.True(ok);
+        Assert.Equal("a"u8.ToArray(), result);
+    }
+#pragma warning restore B58_001
 }

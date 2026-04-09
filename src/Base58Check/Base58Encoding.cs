@@ -302,7 +302,7 @@ public static class Base58Encoding
     /// Gets the maximum number of bytes that the given number of characters can be decoded to.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int MaxBytes(int charCount) => (int)Math.Ceiling(charCount / (5.0 / 3.0));
+    public static int MaxBytes(int charCount) => charCount; // worst case: all leading '1's → charCount zero bytes
 
     /// <summary>
     /// Gets the maximum number of bytes that the given number of characters can be decoded to, if the characters include a checksum.
