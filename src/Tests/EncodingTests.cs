@@ -32,7 +32,7 @@ public class EncodingTests
         ("1111111111", "\0\0\0\0\0\0\0\0\0\0"u8.ToArray()),
     ];
 
-    private static readonly byte[] AddressBytes =
+    private static ReadOnlySpan<byte> AddressBytes =>
     [
         0x00, 0x01, 0x09, 0x66, 0x77, 0x60, 0x06, 0x95, 0x3D, 0x55, 0x67, 0x43, 0x9E, 0x5E, 0x39, 0xF8, 0x6A, 0x0D,
         0x27, 0x3B, 0xEE
@@ -275,6 +275,15 @@ public class EncodingTests
         Assert.False(Base58Encoding.TryDecodeWithChecksum(utf8.AsSpan(), dest.AsSpan(), out _));
     }
 
+    [Fact]
+    public void DecodeWithChecksum_Utf8ByteSpan_BrokenAddress_ThrowsFormatException()
+        => Assert.Throws<FormatException>(() =>
+        {
+            var utf8 = Encoding.UTF8.GetBytes(BrokenAddressText);
+            var dest = new byte[Base58Encoding.MaxBytesWithChecksum(BrokenAddressText.Length)];
+            Base58Encoding.DecodeWithChecksum(utf8.AsSpan(), dest.AsSpan());
+        });
+
     // ── Guid ──────────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -331,6 +340,31 @@ public class EncodingTests
         Assert.Equal(guid, Base58Encoding.DecodeGuid(encoded.AsSpan()));
     }
 
+    [Fact]
+    public void DecodeGuid_Utf8ByteSpan_RoundTrips()
+    {
+        var guid = Guid.NewGuid();
+        var dest = new byte[Base58Encoding.MaxChars(16)];
+        int written = Base58Encoding.EncodeGuid(guid, dest.AsSpan());
+        Assert.Equal(guid, Base58Encoding.DecodeGuid(dest.AsSpan(0, written)));
+    }
+
+    [Fact]
+    public void DecodeGuid_CharSpan_TooShort_ThrowsFormatException()
+        => Assert.Throws<FormatException>(() => Base58Encoding.DecodeGuid("2g".AsSpan()));
+
+    [Fact]
+    public void DecodeGuid_Utf8ByteSpan_TooShort_ThrowsFormatException()
+        => Assert.Throws<FormatException>(() => Base58Encoding.DecodeGuid("2g"u8));
+
+    [Fact]
+    public void TryDecodeGuid_CharSpan_TooShort_ReturnsFalse()
+        => Assert.False(Base58Encoding.TryDecodeGuid("2g".AsSpan(), out _));
+
+    [Fact]
+    public void TryDecodeGuid_Utf8ByteSpan_TooShort_ReturnsFalse()
+        => Assert.False(Base58Encoding.TryDecodeGuid("2g"u8, out _));
+
     // ── Obsolete overload regression ──────────────────────────────────────────────
 
 #pragma warning disable B58_001
@@ -344,6 +378,28 @@ public class EncodingTests
         var ok = Base58Encoding.TryDecodePlain("2g".AsSpan(), out byte[] result);
         Assert.True(ok);
         Assert.Equal("a"u8.ToArray(), result);
+    }
+
+    [Fact]
+    public void DecodeWithChecksum_ObsoleteSpan_ValidAddress_ReturnsExpected()
+    {
+        ReadOnlySpan<byte> result = Base58Encoding.DecodeWithChecksum(AddressText.AsSpan());
+        Assert.Equal(AddressBytes, result);
+    }
+
+    [Fact]
+    public void TryDecodeWithChecksum_ObsoleteSpan_ValidAddress_ReturnsTrueAndExpected()
+    {
+        bool ok = Base58Encoding.TryDecodeWithChecksum(AddressText.AsSpan(), out ReadOnlySpan<byte> data);
+        Assert.True(ok);
+        Assert.Equal(AddressBytes, data);
+    }
+
+    [Fact]
+    public void TryDecodeWithChecksum_ObsoleteSpan_BrokenAddress_ReturnsFalse()
+    {
+        bool ok = Base58Encoding.TryDecodeWithChecksum(BrokenAddressText.AsSpan(), out ReadOnlySpan<byte> _);
+        Assert.False(ok);
     }
 #pragma warning restore B58_001
 }
