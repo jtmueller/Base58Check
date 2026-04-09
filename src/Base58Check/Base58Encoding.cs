@@ -1,4 +1,4 @@
-﻿#if !NET10_0_OR_GREATER
+#if !NET10_0_OR_GREATER
 using System;
 #endif
 using System.Buffers;
@@ -42,7 +42,7 @@ public static class Base58Encoding
         47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 255, 255, 255, 255, 255 // 112–127 'p'–'z'=47–57
     ];
 
-    // TODO: Better unit test coverage (maybe convert to xunit)
+    // ── Encode ───────────────────────────────────────────────────────────────────
 
     /// <summary>
     ///     Encodes data with a 4-byte checksum
@@ -204,6 +204,8 @@ public static class Base58Encoding
         }
     }
 
+    // ── Guid ─────────────────────────────────────────────────────────────────────
+
     /// <summary>
     ///     Encodes a Guid to a 22-character Base-58 string.
     /// </summary>
@@ -292,6 +294,8 @@ public static class Base58Encoding
         return true;
     }
 
+    // ── Sizing helpers ────────────────────────────────────────────────────────────
+
     /// <summary>
     ///     Gets the maximum number of characters that the given number of bytes can be encoded to.
     /// </summary>
@@ -331,37 +335,7 @@ public static class Base58Encoding
         return MaxBytes(charCount) - ChecksumSize;
     }
 
-    /// <summary>
-    ///     Decodes data in Base58Check format (with 4 byte checksum)
-    /// </summary>
-    /// <param name="chars">Data to be decoded</param>
-    /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
-    [Obsolete("Use the Span<byte> destination overload instead: DecodeWithChecksum(ReadOnlySpan<char>, Span<byte>).", DiagnosticId = "B58_001")]
-    public static ReadOnlySpan<byte> DecodeWithChecksum(ReadOnlySpan<char> chars)
-    {
-        var dest = new byte[MaxBytes(chars.Length)];
-        int written = DecodeWithChecksum(chars, dest.AsSpan());
-        return dest.AsSpan(0, written);
-    }
-
-    /// <summary>
-    ///     Decodes data in Base58Check format (with 4 byte checksum)
-    /// </summary>
-    /// <param name="chars">Data to be decoded</param>
-    /// <param name="data">Decoded data if valid, <see cref="ReadOnlySpan{byte}.Empty" /> if invalid.</param>
-    /// <returns>Returns <c>true</c> if valid, otherwise <c>false</c>.</returns>
-    [Obsolete("Use the Span<byte> destination overload instead: TryDecodeWithChecksum(ReadOnlySpan<char>, Span<byte>, out int).", DiagnosticId = "B58_001")]
-    public static bool TryDecodeWithChecksum(ReadOnlySpan<char> chars, out ReadOnlySpan<byte> data)
-    {
-        var dest = new byte[MaxBytes(chars.Length)];
-        if (!TryDecodeWithChecksum(chars, dest.AsSpan(), out int written))
-        {
-            data = default;
-            return false;
-        }
-        data = dest.AsSpan(0, written);
-        return true;
-    }
+    // ── DecodeWithChecksum ────────────────────────────────────────────────────────
 
     /// <summary>
     ///     Decodes data in Base58Check format (with 4 byte checksum)
@@ -450,70 +424,7 @@ public static class Base58Encoding
         return true;
     }
 
-    /// <summary>
-    ///     Decodes data in plain Base58, without any checksum.
-    /// </summary>
-    /// <param name="data">Data to be decoded</param>
-    /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
-    [Obsolete("Use the Span<byte> destination overload instead: DecodePlain(ReadOnlySpan<char>, Span<byte>).",
-        DiagnosticId = "B58_001")]
-    public static byte[] DecodePlain(ReadOnlySpan<char> data)
-    {
-        if (data.IsEmpty)
-            return [];
-
-        var maxBytes = MaxBytes(data.Length);
-        var pooled = maxBytes > 100 ? ArrayPool<byte>.Shared.Rent(maxBytes) : null;
-        try
-        {
-            var buf = pooled is not null ? pooled.AsSpan(0, maxBytes) : stackalloc byte[maxBytes];
-            var written = DecodePlain(data, buf);
-            return buf[..written].ToArray();
-        }
-        finally
-        {
-            if (pooled is not null)
-                ArrayPool<byte>.Shared.Return(pooled);
-        }
-    }
-
-    /// <summary>
-    ///     Decodes data in plain Base58, without any checksum.
-    /// </summary>
-    /// <param name="data">Data to be decoded</param>
-    /// <param name="result">The decoded data if valid</param>
-    /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
-    [Obsolete(
-        "Use the Span<byte> destination overload instead: TryDecodePlain(ReadOnlySpan<char>, Span<byte>, out int).",
-        DiagnosticId = "B58_001")]
-    public static bool TryDecodePlain(ReadOnlySpan<char> data, out byte[] result)
-    {
-        if (data.IsEmpty)
-        {
-            result = [];
-            return true;
-        }
-
-        var maxBytes = MaxBytes(data.Length);
-        var pooled = maxBytes > 100 ? ArrayPool<byte>.Shared.Rent(maxBytes) : null;
-        try
-        {
-            var buf = pooled is not null ? pooled.AsSpan(0, maxBytes) : stackalloc byte[maxBytes];
-            if (!TryDecodePlain(data, buf, out var written))
-            {
-                result = [];
-                return false;
-            }
-
-            result = buf[..written].ToArray();
-            return true;
-        }
-        finally
-        {
-            if (pooled is not null)
-                ArrayPool<byte>.Shared.Return(pooled);
-        }
-    }
+    // ── DecodePlain ───────────────────────────────────────────────────────────────
 
     /// <summary>
     ///     Decodes data in plain Base58 (as a UTF-8 byte span), without any checksum.
@@ -692,6 +603,107 @@ public static class Base58Encoding
                 ArrayPool<byte>.Shared.Return(pooled);
         }
     }
+
+    // ── Obsolete overloads (use Span<byte> destination overloads instead) ─────────
+
+    /// <summary>
+    ///     Decodes data in Base58Check format (with 4 byte checksum)
+    /// </summary>
+    /// <param name="chars">Data to be decoded</param>
+    /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
+    [Obsolete("Use the Span<byte> destination overload instead: DecodeWithChecksum(ReadOnlySpan<char>, Span<byte>).", DiagnosticId = "B58_001")]
+    public static ReadOnlySpan<byte> DecodeWithChecksum(ReadOnlySpan<char> chars)
+    {
+        var dest = new byte[MaxBytes(chars.Length)];
+        int written = DecodeWithChecksum(chars, dest.AsSpan());
+        return dest.AsSpan(0, written);
+    }
+
+    /// <summary>
+    ///     Decodes data in Base58Check format (with 4 byte checksum)
+    /// </summary>
+    /// <param name="chars">Data to be decoded</param>
+    /// <param name="data">Decoded data if valid, <see cref="ReadOnlySpan{byte}.Empty" /> if invalid.</param>
+    /// <returns>Returns <c>true</c> if valid, otherwise <c>false</c>.</returns>
+    [Obsolete("Use the Span<byte> destination overload instead: TryDecodeWithChecksum(ReadOnlySpan<char>, Span<byte>, out int).", DiagnosticId = "B58_001")]
+    public static bool TryDecodeWithChecksum(ReadOnlySpan<char> chars, out ReadOnlySpan<byte> data)
+    {
+        var dest = new byte[MaxBytes(chars.Length)];
+        if (!TryDecodeWithChecksum(chars, dest.AsSpan(), out int written))
+        {
+            data = default;
+            return false;
+        }
+        data = dest.AsSpan(0, written);
+        return true;
+    }
+
+    /// <summary>
+    ///     Decodes data in plain Base58, without any checksum.
+    /// </summary>
+    /// <param name="data">Data to be decoded</param>
+    /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
+    [Obsolete("Use the Span<byte> destination overload instead: DecodePlain(ReadOnlySpan<char>, Span<byte>).",
+        DiagnosticId = "B58_001")]
+    public static byte[] DecodePlain(ReadOnlySpan<char> data)
+    {
+        if (data.IsEmpty)
+            return [];
+
+        var maxBytes = MaxBytes(data.Length);
+        var pooled = maxBytes > 100 ? ArrayPool<byte>.Shared.Rent(maxBytes) : null;
+        try
+        {
+            var buf = pooled is not null ? pooled.AsSpan(0, maxBytes) : stackalloc byte[maxBytes];
+            var written = DecodePlain(data, buf);
+            return buf[..written].ToArray();
+        }
+        finally
+        {
+            if (pooled is not null)
+                ArrayPool<byte>.Shared.Return(pooled);
+        }
+    }
+
+    /// <summary>
+    ///     Decodes data in plain Base58, without any checksum.
+    /// </summary>
+    /// <param name="data">Data to be decoded</param>
+    /// <param name="result">The decoded data if valid</param>
+    /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
+    [Obsolete(
+        "Use the Span<byte> destination overload instead: TryDecodePlain(ReadOnlySpan<char>, Span<byte>, out int).",
+        DiagnosticId = "B58_001")]
+    public static bool TryDecodePlain(ReadOnlySpan<char> data, out byte[] result)
+    {
+        if (data.IsEmpty)
+        {
+            result = [];
+            return true;
+        }
+
+        var maxBytes = MaxBytes(data.Length);
+        var pooled = maxBytes > 100 ? ArrayPool<byte>.Shared.Rent(maxBytes) : null;
+        try
+        {
+            var buf = pooled is not null ? pooled.AsSpan(0, maxBytes) : stackalloc byte[maxBytes];
+            if (!TryDecodePlain(data, buf, out var written))
+            {
+                result = [];
+                return false;
+            }
+
+            result = buf[..written].ToArray();
+            return true;
+        }
+        finally
+        {
+            if (pooled is not null)
+                ArrayPool<byte>.Shared.Return(pooled);
+        }
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────────
 
     private static int AddCheckSum(ReadOnlySpan<byte> data, Span<byte> destination)
     {
