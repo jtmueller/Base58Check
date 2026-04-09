@@ -108,14 +108,6 @@ public class EncodingTests
 
     // ── Invalid character handling ─────────────────────────────────────────────
 
-    [Fact]
-    public void DecodePlain_InvalidChar_ThrowsFormatException()
-        => Assert.Throws<FormatException>(() =>
-        {
-            var dest = new byte[10];
-            Base58Encoding.DecodePlain("ab0".AsSpan(), dest.AsSpan());
-        });
-
     [Theory]
     [InlineData("ab0")]  // '0' not in Base58
     [InlineData("abO")]  // 'O' not in Base58
@@ -287,6 +279,7 @@ public class EncodingTests
     public void EncodeGuid_CharSpan_DecodeGuid_RoundTrips()
     {
         var chars = new char[Base58Encoding.MaxChars(16)];
+        // 16 iterations: Guid.Empty + 15 random GUIDs (16 chosen to exercise all byte positions)
         for (var i = 0; i < 16; i++)
         {
             var guid = i == 0 ? Guid.Empty : Guid.NewGuid();
@@ -299,6 +292,7 @@ public class EncodingTests
     public void EncodeGuid_CharSpan_TryDecodeGuid_RoundTrips()
     {
         var chars = new char[Base58Encoding.MaxChars(16)];
+        // 16 iterations: Guid.Empty + 15 random GUIDs (16 chosen to exercise all byte positions)
         for (var i = 0; i < 16; i++)
         {
             var guid = i == 0 ? Guid.Empty : Guid.NewGuid();
@@ -309,7 +303,7 @@ public class EncodingTests
     }
 
     [Fact]
-    public void EncodeGuid_ByteSpan_DecodeGuid_RoundTrips()
+    public void EncodeGuid_ByteSpan_TryDecodeGuid_RoundTrips()
     {
         var guid = Guid.NewGuid();
         var dest = new byte[Base58Encoding.MaxChars(16)];
