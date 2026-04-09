@@ -11,10 +11,10 @@ using System.Text;
 namespace Base58Check;
 
 /// <summary>
-/// Base58Check Encoding / Decoding (Bitcoin-style)
+///     Base58Check Encoding / Decoding (Bitcoin-style)
 /// </summary>
 /// <remarks>
-/// See here for more details: https://en.bitcoin.it/wiki/Base58Check_encoding
+///     See here for more details: https://en.bitcoin.it/wiki/Base58Check_encoding
 /// </remarks>
 public static class Base58Encoding
 {
@@ -22,9 +22,9 @@ public static class Base58Encoding
     private const int HashBytes = 32;
     private const int GuidBytes = 16;
 
-    private static ReadOnlySpan<byte> DigitsByte => "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"u8;
-
     private static readonly SearchValues<byte> ValidBase58Bytes = SearchValues.Create(DigitsByte);
+
+    private static ReadOnlySpan<byte> DigitsByte => "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"u8;
 
     // Maps ASCII ordinal (0–127) → Base58 digit index (0–57), or 255 for invalid.
     // Inputs with bytes > 127 are rejected by ValidBase58Bytes before this table is consulted.
@@ -33,17 +33,19 @@ public static class Base58Encoding
         255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, // 0–15
         255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, // 16–31
         255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, // 32–47
-        255,   0,   1,   2,   3,   4,   5,   6,   7,   8, 255, 255, 255, 255, 255, 255, // 48–63   '0'=invalid, '1'–'9'=0–8
-        255,   9,  10,  11,  12,  13,  14,  15,  16, 255,  17,  18,  19,  20,  21, 255, // 64–79   'A'–'H'=9–16, 'I'=invalid, 'J'–'N'=17–21, 'O'=invalid
-         22,  23,  24,  25,  26,  27,  28,  29,  30,  31,  32, 255, 255, 255, 255, 255, // 80–95   'P'–'Z'=22–32
-        255,  33,  34,  35,  36,  37,  38,  39,  40,  41,  42,  43, 255,  44,  45,  46, // 96–111  'a'–'k'=33–43, 'l'=invalid, 'm'–'o'=44–46
-         47,  48,  49,  50,  51,  52,  53,  54,  55,  56,  57, 255, 255, 255, 255, 255, // 112–127 'p'–'z'=47–57
+        255, 0, 1, 2, 3, 4, 5, 6, 7, 8, 255, 255, 255, 255, 255, 255, // 48–63   '0'=invalid, '1'–'9'=0–8
+        255, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21,
+        255, // 64–79   'A'–'H'=9–16, 'I'=invalid, 'J'–'N'=17–21, 'O'=invalid
+        22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 255, 255, 255, 255, 255, // 80–95   'P'–'Z'=22–32
+        255, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 255, 44, 45,
+        46, // 96–111  'a'–'k'=33–43, 'l'=invalid, 'm'–'o'=44–46
+        47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 255, 255, 255, 255, 255 // 112–127 'p'–'z'=47–57
     ];
 
     // TODO: Better unit test coverage (maybe convert to xunit)
 
     /// <summary>
-    /// Encodes data with a 4-byte checksum
+    ///     Encodes data with a 4-byte checksum
     /// </summary>
     /// <param name="data">Data to be encoded</param>
     /// <returns></returns>
@@ -65,8 +67,8 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Encodes data with a 4-byte checksum.
-    /// Writes UTF-8 bytes to the destination span.
+    ///     Encodes data with a 4-byte checksum.
+    ///     Writes UTF-8 bytes to the destination span.
     /// </summary>
     /// <param name="data">Data to be encoded</param>
     /// <param name="destination">The destination span to write to.</param>
@@ -89,7 +91,7 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Encodes data in plain Base58, without any checksum.
+    ///     Encodes data in plain Base58, without any checksum.
     /// </summary>
     /// <param name="data">The data to be encoded</param>
     /// <returns></returns>
@@ -114,7 +116,7 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Encodes data in plain Base58, without any checksum.
+    ///     Encodes data in plain Base58, without any checksum.
     /// </summary>
     /// <param name="data">The data to be encoded</param>
     /// <param name="destination">The destination span to write to.</param>
@@ -141,8 +143,8 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Encodes data in plain Base58, without any checksum.
-    /// Writes UTF-8 bytes to the destination span.
+    ///     Encodes data in plain Base58, without any checksum.
+    ///     Writes UTF-8 bytes to the destination span.
     /// </summary>
     /// <param name="data">The data to be encoded</param>
     /// <param name="destination">The destination span to write to.</param>
@@ -175,6 +177,7 @@ public static class Base58Encoding
                     digits[i] = (byte)(carry % 58);
                     carry /= 58;
                 }
+
                 while (carry > 0)
                 {
                     digits[digitsLen++] = (byte)(carry % 58);
@@ -202,7 +205,7 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Encodes a Guid to a 22-character Base-58 string.
+    ///     Encodes a Guid to a 22-character Base-58 string.
     /// </summary>
     public static string EncodeGuid(Guid guid)
     {
@@ -212,7 +215,7 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Encodes a Guid to a 22-character Base-58 span.
+    ///     Encodes a Guid to a 22-character Base-58 span.
     /// </summary>
     public static int EncodeGuid(Guid guid, Span<char> destination)
     {
@@ -222,7 +225,7 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Encodes a Guid to a 22-character Base-58 span.
+    ///     Encodes a Guid to a 22-character Base-58 span.
     /// </summary>
     public static int EncodeGuid(Guid guid, Span<byte> destination)
     {
@@ -232,7 +235,7 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes a Guid from a 22-character Base-58 string or span.
+    ///     Decodes a Guid from a 22-character Base-58 string or span.
     /// </summary>
     public static Guid DecodeGuid(ReadOnlySpan<char> chars)
     {
@@ -244,7 +247,7 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes a Guid from a 22-character Base-58 string or span.
+    ///     Decodes a Guid from a 22-character Base-58 string or span.
     /// </summary>
     public static Guid DecodeGuid(ReadOnlySpan<byte> chars)
     {
@@ -256,7 +259,7 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes a Guid from a 22-character Base-58 string or span.
+    ///     Decodes a Guid from a 22-character Base-58 string or span.
     /// </summary>
     public static bool TryDecodeGuid(ReadOnlySpan<char> chars, out Guid decoded)
     {
@@ -273,7 +276,7 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes a Guid from a 22-character Base-58 string or span.
+    ///     Decodes a Guid from a 22-character Base-58 string or span.
     /// </summary>
     public static bool TryDecodeGuid(ReadOnlySpan<byte> chars, out Guid decoded)
     {
@@ -290,31 +293,46 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Gets the maximum number of characters that the given number of bytes can be encoded to.
+    ///     Gets the maximum number of characters that the given number of bytes can be encoded to.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int MaxChars(int byteCount) => (int)Math.Ceiling(byteCount * (5.0 / 3.0));
+    public static int MaxChars(int byteCount)
+    {
+        return (int)Math.Ceiling(byteCount * (5.0 / 3.0));
+    }
 
     /// <summary>
-    /// Gets the maximum number of characters that the given number of bytes can be encoded to, including checksum characters.
+    ///     Gets the maximum number of characters that the given number of bytes can be encoded to, including checksum
+    ///     characters.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int MaxCharsWithChecksum(int byteCount) => MaxChars(byteCount + ChecksumSize);
+    public static int MaxCharsWithChecksum(int byteCount)
+    {
+        return MaxChars(byteCount + ChecksumSize);
+    }
 
     /// <summary>
-    /// Gets the maximum number of bytes that the given number of characters can be decoded to.
+    ///     Gets the maximum number of bytes that the given number of characters can be decoded to.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int MaxBytes(int charCount) => charCount; // worst case: all leading '1's → charCount zero bytes
+    public static int MaxBytes(int charCount)
+    {
+        return charCount;
+        // worst case: all leading '1's → charCount zero bytes
+    }
 
     /// <summary>
-    /// Gets the maximum number of bytes that the given number of characters can be decoded to, if the characters include a checksum.
+    ///     Gets the maximum number of bytes that the given number of characters can be decoded to, if the characters include a
+    ///     checksum.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int MaxBytesWithChecksum(int charCount) => MaxBytes(charCount) - ChecksumSize;
+    public static int MaxBytesWithChecksum(int charCount)
+    {
+        return MaxBytes(charCount) - ChecksumSize;
+    }
 
     /// <summary>
-    /// Decodes data in Base58Check format (with 4 byte checksum)
+    ///     Decodes data in Base58Check format (with 4 byte checksum)
     /// </summary>
     /// <param name="chars">Data to be decoded</param>
     /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
@@ -331,10 +349,10 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes data in Base58Check format (with 4 byte checksum)
+    ///     Decodes data in Base58Check format (with 4 byte checksum)
     /// </summary>
     /// <param name="chars">Data to be decoded</param>
-    /// <param name="data">Decoded data if valid, <see cref="ReadOnlySpan{byte}.Empty"/> if invalid.</param>
+    /// <param name="data">Decoded data if valid, <see cref="ReadOnlySpan{byte}.Empty" /> if invalid.</param>
     /// <returns>Returns <c>true</c> if valid, otherwise <c>false</c>.</returns>
     public static bool TryDecodeWithChecksum(ReadOnlySpan<char> chars, out ReadOnlySpan<byte> data)
     {
@@ -359,7 +377,7 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes data in Base58Check format (with 4 byte checksum)
+    ///     Decodes data in Base58Check format (with 4 byte checksum)
     /// </summary>
     /// <param name="chars">Data to be decoded</param>
     /// <param name="destination">The destination span to write to</param>
@@ -375,7 +393,7 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes data in Base58Check format (with 4 byte checksum)
+    ///     Decodes data in Base58Check format (with 4 byte checksum)
     /// </summary>
     /// <param name="chars">Data to be decoded</param>
     /// <param name="destination">The destination span to write to</param>
@@ -402,7 +420,7 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes data in Base58Check format (with 4 byte checksum)
+    ///     Decodes data in Base58Check format (with 4 byte checksum)
     /// </summary>
     /// <param name="chars">Chars to be decoded</param>
     /// <param name="destination">The destination span to write to</param>
@@ -418,7 +436,7 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes data in Base58Check format (with 4 byte checksum)
+    ///     Decodes data in Base58Check format (with 4 byte checksum)
     /// </summary>
     /// <param name="chars">Data to be decoded</param>
     /// <param name="destination">The destination span to write to</param>
@@ -446,11 +464,12 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes data in plain Base58, without any checksum.
+    ///     Decodes data in plain Base58, without any checksum.
     /// </summary>
     /// <param name="data">Data to be decoded</param>
     /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
-    [Obsolete("Use the Span<byte> destination overload instead: DecodePlain(ReadOnlySpan<char>, Span<byte>).", DiagnosticId = "B58_001")]
+    [Obsolete("Use the Span<byte> destination overload instead: DecodePlain(ReadOnlySpan<char>, Span<byte>).",
+        DiagnosticId = "B58_001")]
     public static byte[] DecodePlain(ReadOnlySpan<char> data)
     {
         if (data.IsEmpty)
@@ -472,12 +491,14 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes data in plain Base58, without any checksum.
+    ///     Decodes data in plain Base58, without any checksum.
     /// </summary>
     /// <param name="data">Data to be decoded</param>
     /// <param name="result">The decoded data if valid</param>
     /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
-    [Obsolete("Use the Span<byte> destination overload instead: TryDecodePlain(ReadOnlySpan<char>, Span<byte>, out int).", DiagnosticId = "B58_001")]
+    [Obsolete(
+        "Use the Span<byte> destination overload instead: TryDecodePlain(ReadOnlySpan<char>, Span<byte>, out int).",
+        DiagnosticId = "B58_001")]
     public static bool TryDecodePlain(ReadOnlySpan<char> data, out byte[] result)
     {
         if (data.IsEmpty)
@@ -491,11 +512,12 @@ public static class Base58Encoding
         try
         {
             var buf = pooled is not null ? pooled.AsSpan(0, maxBytes) : stackalloc byte[maxBytes];
-            if (!TryDecodePlain(data, buf, out int written))
+            if (!TryDecodePlain(data, buf, out var written))
             {
                 result = [];
                 return false;
             }
+
             result = buf[..written].ToArray();
             return true;
         }
@@ -507,8 +529,8 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes data in plain Base58 (as a UTF-8 byte span), without any checksum.
-    /// Writes the decoded bytes to the destination span.
+    ///     Decodes data in plain Base58 (as a UTF-8 byte span), without any checksum.
+    ///     Writes the decoded bytes to the destination span.
     /// </summary>
     /// <param name="chars">Data to be decoded</param>
     /// <param name="destination">The destination span to write to.</param>
@@ -531,8 +553,8 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes data in plain Base58 (as a UTF-8 byte span), without any checksum.
-    /// Writes the decoded bytes to the destination span.
+    ///     Decodes data in plain Base58 (as a UTF-8 byte span), without any checksum.
+    ///     Writes the decoded bytes to the destination span.
     /// </summary>
     /// <param name="chars">Data to be decoded</param>
     /// <param name="destination">The destination span to write to.</param>
@@ -556,8 +578,8 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes data in plain Base58 (as a UTF-8 byte span), without any checksum.
-    /// Writes the decoded bytes to the destination span.
+    ///     Decodes data in plain Base58 (as a UTF-8 byte span), without any checksum.
+    ///     Writes the decoded bytes to the destination span.
     /// </summary>
     /// <param name="data">Data to be decoded</param>
     /// <param name="destination">The destination span to write to.</param>
@@ -594,6 +616,7 @@ public static class Base58Encoding
                     bytes[i] = (byte)(carry & 0xFF);
                     carry >>= 8;
                 }
+
                 while (carry > 0)
                 {
                     bytes[bytesLen++] = (byte)(carry & 0xFF);
@@ -616,8 +639,8 @@ public static class Base58Encoding
     }
 
     /// <summary>
-    /// Decodes data in plain Base58 (as a UTF-8 byte span), without any checksum.
-    /// Writes the decoded bytes to the destination span.
+    ///     Decodes data in plain Base58 (as a UTF-8 byte span), without any checksum.
+    ///     Writes the decoded bytes to the destination span.
     /// </summary>
     /// <param name="data">Data to be decoded</param>
     /// <param name="destination">The destination span to write to.</param>
@@ -660,6 +683,7 @@ public static class Base58Encoding
                     bytes[i] = (byte)(carry & 0xFF);
                     carry >>= 8;
                 }
+
                 while (carry > 0)
                 {
                     bytes[bytesLen++] = (byte)(carry & 0xFF);
@@ -698,8 +722,9 @@ public static class Base58Encoding
         var givenCheckSum = data[^ChecksumSize..];
 
         Span<byte> correctCheckSum = stackalloc byte[ChecksumSize];
-        return (GetCheckSum(result, correctCheckSum) && givenCheckSum.SequenceEqual(correctCheckSum))
-            ? result : Span<byte>.Empty;
+        return GetCheckSum(result, correctCheckSum) && givenCheckSum.SequenceEqual(correctCheckSum)
+            ? result
+            : Span<byte>.Empty;
     }
 
     private static bool GetCheckSum(ReadOnlySpan<byte> data, Span<byte> destination)
