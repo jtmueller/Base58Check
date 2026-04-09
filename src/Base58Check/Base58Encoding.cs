@@ -1,6 +1,4 @@
-#if !NET10_0_OR_GREATER
 using System;
-#endif
 using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -489,49 +487,7 @@ public static class Base58Encoding
         if (badIndex >= 0)
             throw new FormatException($"Invalid Base58 character '{(char)data[badIndex]}' at position {badIndex}.");
 
-        const byte one = (byte)'1';
-        var leadingZeros = 0;
-        while (leadingZeros < data.Length && data[leadingZeros] == one)
-            leadingZeros++;
-
-        var maxLen = MaxBytes(data.Length);
-        var pooled = maxLen > 100 ? ArrayPool<byte>.Shared.Rent(maxLen) : null;
-        try
-        {
-            var bytes = pooled is not null ? pooled.AsSpan(0, maxLen) : stackalloc byte[maxLen];
-            bytes.Clear();
-            var bytesLen = 0;
-
-            var table = DecodeTable;
-            foreach (var b in data)
-            {
-                int carry = table[b];
-                for (var i = 0; i < bytesLen; i++)
-                {
-                    carry += bytes[i] * 58;
-                    bytes[i] = (byte)(carry & 0xFF);
-                    carry >>= 8;
-                }
-
-                while (carry > 0)
-                {
-                    bytes[bytesLen++] = (byte)(carry & 0xFF);
-                    carry >>= 8;
-                }
-            }
-
-            destination[..leadingZeros].Clear();
-            var pos = leadingZeros;
-            for (var i = bytesLen - 1; i >= 0; i--)
-                destination[pos++] = bytes[i];
-
-            return pos;
-        }
-        finally
-        {
-            if (pooled is not null)
-                ArrayPool<byte>.Shared.Return(pooled);
-        }
+        return DecodeCore(data, destination);
     }
 
     /// <summary>
@@ -556,50 +512,8 @@ public static class Base58Encoding
             return false;
         }
 
-        const byte one = (byte)'1';
-        var leadingZeros = 0;
-        while (leadingZeros < data.Length && data[leadingZeros] == one)
-            leadingZeros++;
-
-        var maxLen = MaxBytes(data.Length);
-        var pooled = maxLen > 100 ? ArrayPool<byte>.Shared.Rent(maxLen) : null;
-        try
-        {
-            var bytes = pooled is not null ? pooled.AsSpan(0, maxLen) : stackalloc byte[maxLen];
-            bytes.Clear();
-            var bytesLen = 0;
-
-            var table = DecodeTable;
-            foreach (var b in data)
-            {
-                int carry = table[b];
-                for (var i = 0; i < bytesLen; i++)
-                {
-                    carry += bytes[i] * 58;
-                    bytes[i] = (byte)(carry & 0xFF);
-                    carry >>= 8;
-                }
-
-                while (carry > 0)
-                {
-                    bytes[bytesLen++] = (byte)(carry & 0xFF);
-                    carry >>= 8;
-                }
-            }
-
-            destination[..leadingZeros].Clear();
-            var pos = leadingZeros;
-            for (var i = bytesLen - 1; i >= 0; i--)
-                destination[pos++] = bytes[i];
-
-            bytesWritten = pos;
-            return true;
-        }
-        finally
-        {
-            if (pooled is not null)
-                ArrayPool<byte>.Shared.Return(pooled);
-        }
+        bytesWritten = DecodeCore(data, destination);
+        return true;
     }
 
     // ── Obsolete overloads (use Span<byte> destination overloads instead) ─────────
@@ -702,6 +616,53 @@ public static class Base58Encoding
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────────
+
+    // Preconditions: data is non-empty and contains only valid Base58 characters.
+    private static int DecodeCore(ReadOnlySpan<byte> data, Span<byte> destination)
+    {
+        const byte one = (byte)'1';
+        var leadingZeros = 0;
+        while (leadingZeros < data.Length && data[leadingZeros] == one)
+            leadingZeros++;
+
+        var maxLen = MaxBytes(data.Length);
+        var pooled = maxLen > 100 ? ArrayPool<byte>.Shared.Rent(maxLen) : null;
+        try
+        {
+            var bytes = pooled is not null ? pooled.AsSpan(0, maxLen) : stackalloc byte[maxLen];
+            bytes.Clear();
+            var bytesLen = 0;
+
+            var table = DecodeTable;
+            foreach (var b in data)
+            {
+                int carry = table[b];
+                for (var i = 0; i < bytesLen; i++)
+                {
+                    carry += bytes[i] * 58;
+                    bytes[i] = (byte)(carry & 0xFF);
+                    carry >>= 8;
+                }
+
+                while (carry > 0)
+                {
+                    bytes[bytesLen++] = (byte)(carry & 0xFF);
+                    carry >>= 8;
+                }
+            }
+
+            destination[..leadingZeros].Clear();
+            var significant = bytes[..bytesLen];
+            significant.Reverse();
+            significant.CopyTo(destination[leadingZeros..]);
+            return leadingZeros + bytesLen;
+        }
+        finally
+        {
+            if (pooled is not null)
+                ArrayPool<byte>.Shared.Return(pooled);
+        }
+    }
 
     private static int AddCheckSum(ReadOnlySpan<byte> data, Span<byte> destination)
     {
