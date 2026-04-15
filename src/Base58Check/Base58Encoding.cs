@@ -19,10 +19,10 @@ public static class Base58Encoding
     private const int ChecksumSize = 4;
     private const int HashBytes = 32;
     private const int GuidBytes = 16;
-
-    private static readonly SearchValues<byte> ValidBase58Bytes = SearchValues.Create(DigitsByte);
-
+    
     private static ReadOnlySpan<byte> DigitsByte => "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"u8;
+    
+    private static readonly SearchValues<byte> ValidBase58Bytes = SearchValues.Create(DigitsByte);
 
     // Maps ASCII ordinal (0–127) → Base58 digit index (0–57), or 255 for invalid.
     // Inputs with bytes > 127 are rejected by ValidBase58Bytes before this table is consulted.
@@ -75,7 +75,7 @@ public static class Base58Encoding
         var pooled = size > 100 ? ArrayPool<byte>.Shared.Rent(size) : null;
         try
         {
-            var dataWithChecksum = pooled ?? stackalloc byte[size];
+            var dataWithChecksum = pooled is not null ? pooled.AsSpan(0, size) : stackalloc byte[size];
             var written = AddCheckSum(data, dataWithChecksum);
             return EncodePlain(dataWithChecksum[..written], destination);
         }
@@ -129,7 +129,9 @@ public static class Base58Encoding
         {
             var result = pooled ?? stackalloc byte[maxChars];
             var written = EncodePlain(data, result);
-            return Encoding.UTF8.GetChars(result[..written], destination);
+            // All Base58 characters are ASCII — ToUtf16 is a direct byte-to-char widen.
+            Ascii.ToUtf16(result[..written], destination, out var charsWritten);
+            return charsWritten;
         }
         finally
         {
@@ -169,7 +171,7 @@ public static class Base58Encoding
                 int carry = b;
                 for (var i = 0; i < digitsLen; i++)
                 {
-                    carry += digits[i] * 256;
+                    carry += digits[i] << 8;
                     digits[i] = (byte)(carry % 58);
                     carry /= 58;
                 }
@@ -183,13 +185,17 @@ public static class Base58Encoding
 
             var alphabet = DigitsByte;
             const byte one = (byte)'1';
-            var pos = 0;
 
-            for (var i = 0; i < leadingZeros; i++)
-                destination[pos++] = one;
+            // Fill is vectorized by the runtime.
+            destination[..leadingZeros].Fill(one);
 
-            for (var i = digitsLen - 1; i >= 0; i--)
-                destination[pos++] = alphabet[digits[i]];
+            // Reverse is vectorized; the alphabet gather that follows is still scalar
+            // but now sequential (forward pass), matching DecodeCore's pattern.
+            var significant = digits[..digitsLen];
+            significant.Reverse();
+            var pos = leadingZeros;
+            foreach (var d in significant)
+                destination[pos++] = alphabet[d];
 
             return pos;
         }
@@ -298,7 +304,7 @@ public static class Base58Encoding
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int MaxChars(int byteCount)
     {
-        return (int)Math.Ceiling(byteCount * (5.0 / 3.0));
+        return (byteCount * 5 + 2) / 3;
     }
 
     /// <summary>
@@ -431,12 +437,12 @@ public static class Base58Encoding
     /// <returns>Returns the number of bytes written to the destination span</returns>
     public static int DecodePlain(ReadOnlySpan<char> chars, Span<byte> destination)
     {
-        var maxByteCount = Encoding.UTF8.GetMaxByteCount(chars.Length);
-        var pooled = maxByteCount > 100 ? ArrayPool<byte>.Shared.Rent(maxByteCount) : null;
+        // Base58 is ASCII-only: one char → one byte, so chars.Length is exact.
+        var pooled = chars.Length > 100 ? ArrayPool<byte>.Shared.Rent(chars.Length) : null;
         try
         {
-            var bytes = pooled ?? stackalloc byte[maxByteCount];
-            var written = Encoding.UTF8.GetBytes(chars, bytes);
+            var bytes = pooled ?? stackalloc byte[chars.Length];
+            Ascii.FromUtf16(chars, bytes, out var written);
             return DecodePlain(bytes[..written], destination);
         }
         finally
@@ -456,12 +462,12 @@ public static class Base58Encoding
     /// <returns>Returns the number of bytes written to the destination span</returns>
     public static bool TryDecodePlain(ReadOnlySpan<char> chars, Span<byte> destination, out int bytesWritten)
     {
-        var maxByteCount = Encoding.UTF8.GetMaxByteCount(chars.Length);
-        var pooled = maxByteCount > 100 ? ArrayPool<byte>.Shared.Rent(maxByteCount) : null;
+        // Base58 is ASCII-only: one char → one byte, so chars.Length is exact.
+        var pooled = chars.Length > 100 ? ArrayPool<byte>.Shared.Rent(chars.Length) : null;
         try
         {
-            var bytes = pooled ?? stackalloc byte[maxByteCount];
-            var written = Encoding.UTF8.GetBytes(chars, bytes);
+            var bytes = pooled ?? stackalloc byte[chars.Length];
+            Ascii.FromUtf16(chars, bytes, out var written);
             return TryDecodePlain(bytes[..written], destination, out bytesWritten);
         }
         finally

@@ -365,6 +365,95 @@ public class EncodingTests
     public void TryDecodeGuid_Utf8ByteSpan_TooShort_ReturnsFalse()
         => Assert.False(Base58Encoding.TryDecodeGuid("2g"u8, out _));
 
+    // ── Array-pool threshold (> 100-byte inputs) ─────────────────────────────────
+    // Each method switches from stackalloc to ArrayPool when its working-buffer
+    // size exceeds 100. These tests use a 100-byte payload, which pushes every
+    // relevant branch past the threshold, and verify that round-trips still
+    // produce the correct result. (A prior bug caused EncodeWithChecksum to place
+    // the checksum at the wrong offset in the rented—oversized—buffer, so decoded
+    // data failed checksum verification.)
+
+    // Deterministic 100-byte payload: non-zero, no special structure.
+    private static readonly byte[] LargeInput =
+        Enumerable.Range(0, 100).Select(i => (byte)(i * 37 + 13)).ToArray();
+
+    [Fact]
+    public void EncodeWithChecksum_LargeInput_String_RoundTrips()
+    {
+        var encoded = Base58Encoding.EncodeWithChecksum(LargeInput);
+        var dest = new byte[Base58Encoding.MaxBytesWithChecksum(encoded.Length)];
+        var written = Base58Encoding.DecodeWithChecksum(encoded.AsSpan(), dest.AsSpan());
+        Assert.Equal(LargeInput, dest[..written]);
+    }
+
+    [Fact]
+    public void EncodeWithChecksum_LargeInput_ToByteSpan_RoundTrips()
+    {
+        var encodedDest = new byte[Base58Encoding.MaxCharsWithChecksum(LargeInput.Length)];
+        var encodedLen = Base58Encoding.EncodeWithChecksum(LargeInput, encodedDest.AsSpan());
+        var decoded = new byte[Base58Encoding.MaxBytesWithChecksum(encodedLen)];
+        var written = Base58Encoding.DecodeWithChecksum(encodedDest.AsSpan(0, encodedLen), decoded.AsSpan());
+        Assert.Equal(LargeInput, decoded[..written]);
+    }
+
+    [Fact]
+    public void TryDecodeWithChecksum_LargeInput_CharSpan_RoundTrips()
+    {
+        var encoded = Base58Encoding.EncodeWithChecksum(LargeInput);
+        var dest = new byte[Base58Encoding.MaxBytesWithChecksum(encoded.Length)];
+        bool ok = Base58Encoding.TryDecodeWithChecksum(encoded.AsSpan(), dest.AsSpan(), out int written);
+        Assert.True(ok);
+        Assert.Equal(LargeInput, dest[..written]);
+    }
+
+    [Fact]
+    public void TryDecodeWithChecksum_LargeInput_Utf8ByteSpan_RoundTrips()
+    {
+        var utf8 = Encoding.UTF8.GetBytes(Base58Encoding.EncodeWithChecksum(LargeInput));
+        var dest = new byte[Base58Encoding.MaxBytesWithChecksum(utf8.Length)];
+        bool ok = Base58Encoding.TryDecodeWithChecksum(utf8.AsSpan(), dest.AsSpan(), out int written);
+        Assert.True(ok);
+        Assert.Equal(LargeInput, dest[..written]);
+    }
+
+    [Fact]
+    public void DecodeWithChecksum_LargeInput_Utf8ByteSpan_RoundTrips()
+    {
+        var utf8 = Encoding.UTF8.GetBytes(Base58Encoding.EncodeWithChecksum(LargeInput));
+        var dest = new byte[Base58Encoding.MaxBytesWithChecksum(utf8.Length)];
+        var written = Base58Encoding.DecodeWithChecksum(utf8.AsSpan(), dest.AsSpan());
+        Assert.Equal(LargeInput, dest[..written]);
+    }
+
+    [Fact]
+    public void EncodePlain_LargeInput_String_RoundTrips()
+    {
+        var encoded = Base58Encoding.EncodePlain(LargeInput);
+        var dest = new byte[Base58Encoding.MaxBytes(encoded.Length)];
+        var written = Base58Encoding.DecodePlain(encoded.AsSpan(), dest.AsSpan());
+        Assert.Equal(LargeInput, dest[..written]);
+    }
+
+    [Fact]
+    public void EncodePlain_LargeInput_ToByteSpan_RoundTrips()
+    {
+        var encodedDest = new byte[Base58Encoding.MaxChars(LargeInput.Length)];
+        var encodedLen = Base58Encoding.EncodePlain(LargeInput, encodedDest.AsSpan());
+        var decoded = new byte[Base58Encoding.MaxBytes(encodedLen)];
+        var written = Base58Encoding.DecodePlain(encodedDest.AsSpan(0, encodedLen), decoded.AsSpan());
+        Assert.Equal(LargeInput, decoded[..written]);
+    }
+
+    [Fact]
+    public void EncodePlain_LargeInput_ToCharSpan_RoundTrips()
+    {
+        var chars = new char[Base58Encoding.MaxChars(LargeInput.Length)];
+        var encodedLen = Base58Encoding.EncodePlain(LargeInput, chars.AsSpan());
+        var dest = new byte[Base58Encoding.MaxBytes(encodedLen)];
+        var written = Base58Encoding.DecodePlain(chars.AsSpan(0, encodedLen), dest.AsSpan());
+        Assert.Equal(LargeInput, dest[..written]);
+    }
+
     // ── Obsolete overload regression ──────────────────────────────────────────────
 
 #pragma warning disable B58_001
